@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { pipeline } from "@xenova/transformers";
+import { HfInference } from "@huggingface/inference";
 
 export const runtime = "nodejs";
 
@@ -14,7 +14,7 @@ type EvalInputRow = {
 type EvalSampleScores = {
   question: string;
   exact_match: number;
-  fuzzy_f1: number;
+  semantic_similarity: number; // This is the key metric now!
   keyword_precision: number;
   keyword_recall: number;
   context_precision: number;
@@ -25,7 +25,7 @@ type EvalSampleScores = {
 type EvalResult = {
   overall: {
     exact_match: number;
-    fuzzy_f1: number;
+    semantic_similarity: number;
     keyword_precision: number;
     keyword_recall: number;
     context_precision: number;
@@ -34,6 +34,9 @@ type EvalResult = {
   };
   rows: EvalSampleScores[];
 };
+
+// Initialize HuggingFace Inference (same as your RAG)
+const hf = new HfInference(process.env.HUGGINGFACE_API_KEY || "");
 
 // Simple English stopwords
 const STOPWORDS = new Set([
@@ -72,42 +75,68 @@ const STOPWORDS = new Set([
   "down",
   "over",
   "under",
+  "you",
+  "just",
+  "asked",
+  "provided",
+  "information",
+  "database",
 ]);
 
-// Initialize embedding model once (lazy loading)
-let embedder: any = null;
+// Cosine similarity between two vectors
+function cosineSimilarity(a: number[], b: number[]): number {
+  let dotProduct = 0;
+  let magnitudeA = 0;
+  let magnitudeB = 0;
 
-async function getEmbedder() {
-  if (!embedder) {
-    console.log("⏳ Loading embedding model...");
-    embedder = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
-    console.log("✅ Embedding model loaded");
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    magnitudeA += a[i] * a[i];
+    magnitudeB += b[i] * b[i];
   }
-  return embedder;
+
+  magnitudeA = Math.sqrt(magnitudeA);
+  magnitudeB = Math.sqrt(magnitudeB);
+
+  if (magnitudeA === 0 || magnitudeB === 0) return 0;
+
+  return dotProduct / (magnitudeA * magnitudeB);
 }
 
+// Get embeddings using BGE-M3 (same as your RAG)
+async function getEmbedding(text: string): Promise<number[]> {
+  try {
+    const response = await hf.featureExtraction({
+      model: "BAAI/bge-m3",
+      inputs: text,
+    });
+
+    // HF returns nested array, flatten it
+    if (Array.isArray(response[0]) && typeof response[0][0] === "number") {
+      return response[0] as number[];
+    }
+    return response as number[];
+  } catch (error) {
+    console.error("Embedding error:", error);
+    throw error;
+  }
+}
+
+// Semantic similarity using embeddings
 async function semanticSimilarity(
   text1: string,
   text2: string,
 ): Promise<number> {
   try {
-    const model = await getEmbedder();
-
-    const [output1, output2] = await Promise.all([
-      model(text1, { pooling: "mean", normalize: true }),
-      model(text2, { pooling: "mean", normalize: true }),
+    const [embedding1, embedding2] = await Promise.all([
+      getEmbedding(text1),
+      getEmbedding(text2),
     ]);
 
-    const e1 = Array.from(output1.data);
-    const e2 = Array.from(output2.data);
+    const similarity = cosineSimilarity(embedding1, embedding2);
 
-    // Cosine similarity (embeddings are already normalized)
-    let dotProduct = 0;
-    for (let i = 0; i < e1.length; i++) {
-      dotProduct += (e1 as any)[i] * (e2 as any)[i];
-    }
-
-    return Math.max(0, Math.min(1, dotProduct)); // Clamp to [0, 1]
+    // Convert to 0-1 range (cosine similarity is already -1 to 1)
+    return Math.max(0, Math.min(1, (similarity + 1) / 2));
   } catch (error) {
     console.error("Semantic similarity error:", error);
     return 0;
@@ -129,30 +158,6 @@ function uniqueKeywords(text: string): Set<string> {
 
 function exactMatch(a: string, b: string): number {
   return a.trim().toLowerCase() === b.trim().toLowerCase() ? 1 : 0;
-}
-
-function fuzzyF1(answer: string, groundTruth: string): number {
-  const ansTokens = tokenize(answer);
-  const gtTokens = tokenize(groundTruth);
-  if (gtTokens.length === 0 || ansTokens.length === 0) return 0;
-
-  const ansCounts: Record<string, number> = {};
-  const gtCounts: Record<string, number> = {};
-
-  for (const t of ansTokens) ansCounts[t] = (ansCounts[t] || 0) + 1;
-  for (const t of gtTokens) gtCounts[t] = (gtCounts[t] || 0) + 1;
-
-  let overlap = 0;
-  for (const t of Object.keys(gtCounts)) {
-    if (ansCounts[t]) {
-      overlap += Math.min(ansCounts[t], gtCounts[t]);
-    }
-  }
-
-  const precision = overlap / ansTokens.length;
-  const recall = overlap / gtTokens.length;
-  if (precision === 0 && recall === 0) return 0;
-  return (2 * precision * recall) / (precision + recall);
 }
 
 function keywordPR(
@@ -228,8 +233,17 @@ export async function POST(req: Request) {
     );
   }
 
+  if (!process.env.HUGGINGFACE_API_KEY) {
+    return NextResponse.json(
+      { success: false, error: "HUGGINGFACE_API_KEY not configured" },
+      { status: 500 },
+    );
+  }
+
   try {
-    console.log(`📊 Evaluating ${data.length} test cases...`);
+    console.log(
+      `📊 Evaluating ${data.length} test cases with BGE-M3 embeddings...`,
+    );
 
     const rows: EvalSampleScores[] = await Promise.all(
       data.map(async (row) => {
@@ -238,18 +252,16 @@ export async function POST(req: Request) {
         const contexts = Array.isArray(row.contexts) ? row.contexts : [];
 
         const em = exactMatch(answer, gt);
-        const f1 = fuzzyF1(answer, gt);
         const kw = keywordPR(answer, gt);
         const ctx = contextPR(contexts, gt);
 
-        // Semantic similarity using local embeddings (no API key needed!)
+        // 🎯 KEY CHANGE: Use semantic similarity instead of token matching
         const semanticScore = await semanticSimilarity(answer, gt);
 
-        // Use semantic similarity as fuzzy_f1 for better accuracy
         return {
           question: row.question,
           exact_match: em,
-          fuzzy_f1: semanticScore, // ✨ Enhanced with semantic similarity
+          semantic_similarity: semanticScore, // Main metric!
           keyword_precision: kw.precision,
           keyword_recall: kw.recall,
           context_precision: ctx.precision,
@@ -265,7 +277,7 @@ export async function POST(req: Request) {
 
     const overall: EvalResult["overall"] = {
       exact_match: avg((r) => r.exact_match),
-      fuzzy_f1: avg((r) => r.fuzzy_f1),
+      semantic_similarity: avg((r) => r.semantic_similarity),
       keyword_precision: avg((r) => r.keyword_precision),
       keyword_recall: avg((r) => r.keyword_recall),
       context_precision: avg((r) => r.context_precision),

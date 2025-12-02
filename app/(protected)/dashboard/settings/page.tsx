@@ -20,7 +20,7 @@ type EvalRow = {
 
 type CustomOverall = {
   exact_match: number;
-  fuzzy_f1: number;
+  semantic_similarity: number; // Changed from fuzzy_f1
   keyword_precision: number;
   keyword_recall: number;
   context_precision: number;
@@ -31,7 +31,7 @@ type CustomOverall = {
 type CustomRow = {
   question: string;
   exact_match: number;
-  fuzzy_f1: number;
+  semantic_similarity: number; // Changed from fuzzy_f1
   keyword_precision: number;
   keyword_recall: number;
   context_precision: number;
@@ -95,10 +95,13 @@ export default function SettingsPage() {
         // res.contexts contains full docs from kbTool; map to safe shape
         const contexts =
           res.success && Array.isArray(res.contexts)
-            ? res.contexts.map((d: any) => ({
-                text: d.pageContent ?? "",
-                metadata: d.metadata ?? {},
-              }))
+            ? res.contexts.map((d: any) => {
+                console.log("Context item:", d, typeof d); // ← Add this
+                return {
+                  text: d.pageContent ?? d ?? "", // ← Handle both cases
+                  metadata: d.metadata ?? {},
+                };
+              })
             : [];
 
         if (!res.success) {
@@ -302,6 +305,31 @@ export default function SettingsPage() {
                     <span className="font-semibold">Latency:</span>{" "}
                     {(r.latencyMs / 1000).toFixed(2)} s
                   </p>
+                  {/* <p>
+                    <span className="font-semibold">Contexts:</span>
+                    {!r.contexts || r.contexts.length === 0 ? (
+                      " None"
+                    ) : (
+                      <span>
+                        {" "}
+                        {r.contexts.map((context, idx) => {
+                          const text =
+                            typeof context === "object" &&
+                            context !== null &&
+                            "text" in context
+                              ? context.text
+                              : String(context);
+
+                          return (
+                            <span key={idx}>
+                              {idx > 0 && " | "}
+                              {text} <br /> <br />
+                            </span>
+                          );
+                        })}
+                      </span>
+                    )}
+                  </p> */}
 
                   {r.contexts && r.contexts.length > 0 && (
                     <div className="mt-2 border-t border-border pt-2 space-y-1">
@@ -309,25 +337,43 @@ export default function SettingsPage() {
                         Retrieved contexts:
                       </p>
                       {r.contexts.map((c, idx) => {
-                        const meta = c.metadata || {};
-                        const fileName =
-                          meta.fileName || meta.source || "Unknown file";
-                        const pageNumber =
-                          meta.pageNumber ?? meta.page ?? undefined;
+                        // c may be { text: "...", metadata: { ... } } or a plain string
+                        if (
+                          typeof c === "object" &&
+                          c !== null &&
+                          "text" in c
+                        ) {
+                          const meta = c.metadata || {};
+                          const fileName =
+                            meta.fileName || meta.source || "Unknown file";
+                          const pageNumber =
+                            meta.pageNumber ?? meta.page ?? undefined;
 
-                        return (
-                          <div
-                            key={idx}
-                            className="text-xs text-muted-foreground"
-                          >
-                            <p className="font-medium">
-                              {fileName}
-                              {pageNumber !== undefined &&
-                                ` — page ${pageNumber}`}
-                            </p>
-                            <p className="line-clamp-2">{c.text}</p>
-                          </div>
-                        );
+                          return (
+                            <div
+                              key={idx}
+                              className="text-xs text-muted-foreground"
+                            >
+                              <p className="font-medium">
+                                {/* Always show the file label, but user still sees the text below */}
+                                {fileName}
+                                {pageNumber !== undefined &&
+                                  ` — page ${pageNumber}`}
+                              </p>
+                              <p className="line-clamp-2">{c.text}</p>
+                            </div>
+                          );
+                        } else {
+                          // It's a plain string, show text
+                          return (
+                            <div
+                              key={idx}
+                              className="text-xs text-muted-foreground"
+                            >
+                              <p className="line-clamp-2">{String(c)}</p>
+                            </div>
+                          );
+                        }
                       })}
                     </div>
                   )}
@@ -338,84 +384,252 @@ export default function SettingsPage() {
         )}
 
         {evalOverall && (
-          <div className="mt-8 space-y-4">
-            <h2 className="text-lg font-semibold">Custom evaluation metrics</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              <div className="rounded-md border border-border bg-card p-3">
-                <p className="text-xs text-muted-foreground mb-1">
-                  Exact match
-                </p>
-                <p className="text-lg font-semibold">
-                  {evalOverall.exact_match.toFixed(3) ?? 0}
-                </p>
+          <div className="mt-8 space-y-6">
+            {/* Overall Performance Card */}
+            <div className="rounded-xl border-2 border-border bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">Overall Performance</h2>
+                <div className="text-right">
+                  <div className="text-4xl font-bold text-purple-600">
+                    {calculateOverallScore(evalOverall)}%
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {getPerformanceLabel(calculateOverallScore(evalOverall))}
+                  </div>
+                </div>
               </div>
-              <div className="rounded-md border border-border bg-card p-3">
-                <p className="text-xs text-muted-foreground mb-1">Fuzzy F1</p>
-                <p className="text-lg font-semibold">
-                  {evalOverall.fuzzy_f1.toFixed(3) ?? 0}
-                </p>
-              </div>
-              <div className="rounded-md border border-border bg-card p-3">
-                <p className="text-xs text-muted-foreground mb-1">
-                  Keyword precision
-                </p>
-                <p className="text-lg font-semibold">
-                  {evalOverall.keyword_precision.toFixed(3) ?? 0}
-                </p>
-              </div>
-              <div className="rounded-md border border-border bg-card p-3">
-                <p className="text-xs text-muted-foreground mb-1">
-                  Keyword recall
-                </p>
-                <p className="text-lg font-semibold">
-                  {evalOverall.keyword_recall.toFixed(3) ?? 0}
-                </p>
-              </div>
-              <div className="rounded-md border border-border bg-card p-3">
-                <p className="text-xs text-muted-foreground mb-1">
-                  Context precision
-                </p>
-                <p className="text-lg font-semibold">
-                  {evalOverall.context_precision.toFixed(3) ?? 0}
-                </p>
-              </div>
-              <div className="rounded-md border border-border bg-card p-3">
-                <p className="text-xs text-muted-foreground mb-1">
-                  Context recall
-                </p>
-                <p className="text-lg font-semibold">
-                  {evalOverall.context_recall.toFixed(3) ?? 0}
-                </p>
+
+              {/* Overall Progress Bar */}
+              <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                <div
+                  className={`h-4 rounded-full transition-all ${getScoreColor(calculateOverallScore(evalOverall))}`}
+                  style={{ width: `${calculateOverallScore(evalOverall)}%` }}
+                />
               </div>
             </div>
 
+            {/* Metrics Grid with Visual Indicators */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Answer Quality */}
+
+              {/* Answer Relevance */}
+              <MetricCard
+                title="Answer Relevance"
+                description="How semantically similar answers are to ground truth"
+                score={evalOverall.semantic_similarity * 100}
+                icon="🎯"
+              />
+
+              {/* Keyword Coverage */}
+              <MetricCard
+                title="Keyword Coverage"
+                description="Important keywords included in answers"
+                score={
+                  ((evalOverall.keyword_precision +
+                    evalOverall.keyword_recall) /
+                    2) *
+                  100
+                }
+                icon="🔑"
+              />
+
+              {/* Context Usage */}
+              <MetricCard
+                title="Context Usage"
+                description="How well the bot uses retrieved information"
+                score={
+                  ((evalOverall.context_precision +
+                    evalOverall.context_recall) /
+                    2) *
+                  100
+                }
+                icon="📚"
+              />
+
+              {/* Response Speed */}
+              <MetricCard
+                title="Response Speed"
+                description="Average time to generate answers"
+                score={getSpeedScore(evalOverall.latency_ms)}
+                value={`${(evalOverall.latency_ms / 1000).toFixed(1)}s`}
+                icon="⚡"
+              />
+
+              {/* Overall Accuracy */}
+              <MetricCard
+                title="Overall Accuracy"
+                description="Combined score across all quality metrics"
+                score={calculateOverallScore(evalOverall)}
+                icon="📊"
+              />
+            </div>
+
+            {/* Individual Test Results */}
             {evalRows.length > 0 && (
-              <div className="space-y-3">
-                {evalRows.map((r, idx) => (
-                  <div
-                    key={idx}
-                    className="border border-border rounded-md bg-card p-3 text-sm space-y-1"
-                  >
-                    <p>
-                      <span className="font-semibold">Q:</span> {r.question}
-                    </p>
-                    <p>Exact match: {r.exact_match.toFixed(3) ?? 0}</p>
-                    <p>Fuzzy F1: {r.fuzzy_f1.toFixed(3) ?? 0}</p>
-                    <p>
-                      Keyword precision: {r.keyword_precision.toFixed(3) ?? 0}
-                    </p>
-                    <p>Keyword recall: {r.keyword_recall.toFixed(3) ?? 0}</p>
-                    <p>
-                      Context precision: {r.context_precision.toFixed(3) ?? 0}
-                    </p>
-                    <p>Context recall: {r.context_recall.toFixed(3) ?? 0}</p>
-                    <p>Latency: {(r.latency_ms / 1000).toFixed(2)} s</p>
-                  </div>
-                ))}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">
+                  Individual Test Results
+                </h3>
+                <div className="space-y-3">
+                  {evalRows.map((r, idx) => (
+                    <div
+                      key={idx}
+                      className="border border-border rounded-lg bg-card p-4 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <p className="font-medium text-sm flex-1">
+                          {r.question}
+                        </p>
+                        <div className="ml-4">
+                          <ScoreBadge score={calculateTestScore(r)} />
+                        </div>
+                      </div>
+
+                      {/* Mini metrics bar */}
+                      <div className="flex gap-2 mt-3">
+                        <MiniMetric label="Exact Match" value={r.exact_match} />
+                        <MiniMetric
+                          label="Relevance"
+                          value={r.semantic_similarity}
+                        />
+                        <MiniMetric
+                          label="Keywords"
+                          value={(r.keyword_precision + r.keyword_recall) / 2}
+                        />
+                        <MiniMetric
+                          label="Context"
+                          value={(r.context_precision + r.context_recall) / 2}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+// Helper Functions
+function calculateOverallScore(overall: CustomOverall): number {
+  // Semantic similarity is now the PRIMARY metric (60% weight)
+  const score =
+    overall.semantic_similarity * 60 + // Main metric!
+    ((overall.keyword_precision + overall.keyword_recall) / 2) * 20 +
+    ((overall.context_precision + overall.context_recall) / 2) * 20;
+  return Math.round(score);
+}
+
+function calculateTestScore(row: CustomRow): number {
+  const score =
+    row.exact_match * 25 +
+    row.semantic_similarity * 35 +
+    ((row.keyword_precision + row.keyword_recall) / 2) * 20 +
+    ((row.context_precision + row.context_recall) / 2) * 20;
+  return Math.round(score);
+}
+
+function getPerformanceLabel(score: number): string {
+  if (score >= 90) return "🎉 Excellent";
+  if (score >= 75) return "👍 Good";
+  if (score >= 60) return "⚠️ Fair";
+  if (score >= 40) return "⚠️ Needs Improvement";
+  return "❌ Poor";
+}
+
+function getScoreColor(score: number): string {
+  if (score >= 90) return "bg-green-500";
+  if (score >= 75) return "bg-blue-500";
+  if (score >= 60) return "bg-yellow-500";
+  if (score >= 40) return "bg-orange-500";
+  return "bg-red-500";
+}
+
+function getSpeedScore(latencyMs: number): number {
+  if (latencyMs < 2000) return 100;
+  if (latencyMs < 5000) return 80;
+  if (latencyMs < 10000) return 60;
+  if (latencyMs < 15000) return 40;
+  return 20;
+}
+
+// Metric Card Component
+function MetricCard({
+  title,
+  description,
+  score,
+  value,
+  icon,
+}: {
+  title: string;
+  description: string;
+  score: number;
+  value?: string;
+  icon: string;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">{icon}</span>
+          <div>
+            <h3 className="font-semibold text-sm">{title}</h3>
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <div className="flex items-end justify-between mb-1">
+          <span className="text-2xl font-bold">
+            {value || `${Math.round(score)}%`}
+          </span>
+          <span className="text-xs font-medium text-muted-foreground">
+            {getPerformanceLabel(score).split(" ")[1]}
+          </span>
+        </div>
+
+        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+          <div
+            className={`h-2 rounded-full transition-all ${getScoreColor(score)}`}
+            style={{ width: `${score}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Score Badge Component
+function ScoreBadge({ score }: { score: number }) {
+  const color = getScoreColor(score);
+  const bgColor = color.replace("bg-", "bg-").replace("-500", "-100");
+  const textColor = color.replace("bg-", "text-");
+
+  return (
+    <div
+      className={`${bgColor} ${textColor} px-3 py-1 rounded-full text-xs font-semibold`}
+    >
+      {score}% {getPerformanceLabel(score).split(" ")[0]}
+    </div>
+  );
+}
+
+// Mini Metric Component
+function MiniMetric({ label, value }: { label: string; value: number }) {
+  const percentage = Math.round(value * 100);
+  const color = getScoreColor(percentage);
+
+  return (
+    <div className="flex-1">
+      <div className="text-[10px] text-muted-foreground mb-1">{label}</div>
+      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+        <div
+          className={`h-1.5 rounded-full ${color}`}
+          style={{ width: `${percentage}%` }}
+        />
       </div>
     </div>
   );

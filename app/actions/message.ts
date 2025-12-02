@@ -151,8 +151,10 @@ Remember: Using the tool costs time and resources. Only use it when absolutely n
 
     // capture contexts used this call (for eval mode)
     const contexts =
-      (kbTool.lastDocs || []).map((d: any) => String(d.pageContent || "")) ??
-      [];
+      (kbTool.lastDocs || []).map((d: any) => ({
+        pageContent: d.pageContent || "",
+        metadata: d.metadata || {},
+      })) ?? [];
 
     let updatedHistory: Message[] | undefined;
 
