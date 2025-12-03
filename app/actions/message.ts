@@ -16,10 +16,9 @@ type GenerateOptions = {
   chatHistory?: Message[];
   namespace?: string;
   sessionId?: string;
-  evalMode?: boolean; // true = evaluation flow (return contexts)
+  evalMode?: boolean;
 };
 
-// one shared checkpointer
 const checkpointer = new MemorySaver();
 
 export const generateResponse = async (
@@ -46,58 +45,67 @@ export const generateResponse = async (
     };
   }
 
-  const user = await currentUser();
-  if (!user) {
-    return {
-      success: false,
-      error: "User not authenticated",
-    };
+  // ✅ Only check Clerk auth if namespace NOT provided
+  let finalNamespace = namespace;
+
+  if (!finalNamespace) {
+    const user = await currentUser();
+    if (!user) {
+      return {
+        success: false,
+        error: "User not authenticated",
+      };
+    }
+    finalNamespace = user.id;
   }
+
+  console.log("Using namespace:", finalNamespace);
 
   try {
     const model = new ChatGroq({
       apiKey: process.env.GROQ_API_KEY || "",
       model: "llama-3.1-8b-instant",
       temperature: 0.5,
-      maxTokens: 800,
     });
 
-    // tool instance so we can capture lastDocs
-    const kbTool = new KnowledgeBaseTool(namespace);
+    // ✅ Use finalNamespace instead of namespace
+    const kbTool = new KnowledgeBaseTool(finalNamespace);
     const tools = [kbTool];
 
     const systemPrompt = `You are a helpful AI assistant with access to a knowledge base through the knowledge_base_search tool.
 
-CRITICAL INSTRUCTIONS - READ CAREFULLY:
+CRITICAL INSTRUCTIONS:
 
-1. CONVERSATION CONTEXT FIRST:
-- You have access to the FULL conversation history in the messages above
-- You forget about the trained data you were built on and rely on conversation history first, then tools to answer
-- ALWAYS read through the conversation history before deciding to use tools
-- If the information was already discussed in previous messages, answer directly from that context
-- ONLY use the knowledge_base_search tool if the information is NOT present in the conversation history
+1. WHEN TO USE THE TOOL:
+✅ USE knowledge_base_search ONLY for:
+- Specific customer/account questions (e.g., "Who is the account manager?")
+- Data retrieval requests (e.g., "What is the revenue?")
+- Document-based information
 
-2. WHEN TO USE THE TOOL:
-✅ USE KnowledgeBaseTool (name: knowledge_base_search) tool ONLY when:
-- User asks for NEW information not mentioned in conversation history
-- User requests specific details/data you haven't retrieved yet
-- User asks about documents, files, or database content you don't have
-
-❌ DO NOT use the tool for:
+❌ NEVER use the tool for:
 - Greetings: "hi", "hello", "hey", "good morning"
-- Acknowledgments: "thanks", "ok", "good", "great", "nice"
-- Follow-up questions about information ALREADY in conversation history
-- Clarifying or rephrasing something you already said
-- Questions about information you just provided in the last few messages
+- Acknowledgments: "thanks", "ok", "good", "great", "bye"
+- Chitchat: "how are you", "nice", "cool"
+- Apologies or clarifications
 
-3. REASONING PROCESS:
-Step 1: Read the conversation history carefully
-Step 2: Check if the answer exists in previous messages
-Step 3: If yes → Answer directly using that information
-Step 4: If no → THEN use knowledge_base_search tool
-Step 5: if you couldn't find anything relevant even after using the tool, respond politely that you don't have that information. Never use your pretraining data to answer.
+2. FOR NON-SEARCH QUERIES:
+- Just respond naturally and politely
+- Examples:
+  * User: "hi" → You: "Hello! How can I help you today?"
+  * User: "thanks" → You: "You're welcome! Let me know if you need anything else."
+  * User: "bye" → You: "Goodbye! Feel free to come back anytime."
 
-Remember: Using the tool costs time and resources. Only use it when absolutely necessary!`;
+3. CONVERSATION MEMORY:
+- Check conversation history first
+- If answer was already given, use it from memory
+- Only call tool for NEW information requests
+
+4. RESPONSE STYLE:
+- Be concise and friendly
+- Don't mention tools or processes
+- Answer directly
+
+Remember: Not every message needs a tool call. Use common sense!`;
 
     const agent = createReactAgent({
       llm: model,
@@ -108,16 +116,13 @@ Remember: Using the tool costs time and resources. Only use it when absolutely n
 
     const config = {
       configurable: {
-        // use separate thread_ids for normal vs eval if you want no shared memory
         thread_id: evalMode ? `${sessionId}-eval` : sessionId,
       },
       recursionLimit: 15,
     };
 
-    // build message list
     let allMessages;
     if (evalMode) {
-      // eval: pure single-turn
       allMessages = [new HumanMessage(query)];
     } else {
       if (chatHistory.length === 0) {
@@ -149,7 +154,6 @@ Remember: Using the tool costs time and resources. Only use it when absolutely n
 
     console.log("✅ Response:", responseText.substring(0, 150));
 
-    // capture contexts used this call (for eval mode)
     const contexts =
       (kbTool.lastDocs || []).map((d: any) => ({
         pageContent: d.pageContent || "",
@@ -159,7 +163,6 @@ Remember: Using the tool costs time and resources. Only use it when absolutely n
     let updatedHistory: Message[] | undefined;
 
     if (!evalMode) {
-      // normal chat: update memory
       const newHistory: Message[] = [
         ...chatHistory,
         { role: "user", content: query },
@@ -181,9 +184,7 @@ Remember: Using the tool costs time and resources. Only use it when absolutely n
     return {
       success: true,
       answer: responseText || "No response generated",
-      // only set memory in normal mode
       memory: updatedHistory,
-      // contexts available for eval mode (optional in normal mode)
       contexts,
     };
   } catch (error) {

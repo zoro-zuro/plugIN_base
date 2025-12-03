@@ -32,7 +32,7 @@ Input should be a clear search query describing what information is needed.`;
       const vectorStore = await getPineconeVectorStore(this.namespace);
 
       const retriever = vectorStore.asRetriever({
-        k: 4, // slightly higher k for better coverage
+        k: 3, // slightly higher k for better coverage
         searchType: "mmr", // more diverse but still relevant results
         searchKwargs: {
           lambda: 0.7, // 0.7 relevance / 0.3 diversity

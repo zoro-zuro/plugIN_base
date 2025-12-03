@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>My Website - Test Chatbot</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+      .content {
+        background: white;
+        color: #333;
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      }
+      h1 {
+        color: #667eea;
+      }
+      p {
+        color: #666;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="content">
+      <h1>Welcome to My Website</h1>
+      <p>Test website with embedded chatbot.</p>
+      <p><strong>Look bottom-right for chat button! 💬</strong></p>
+    </div>
+
+    <!-- CHATBOT CODE -->
+    <script>
+      (function () {
+        var button = document.createElement("button");
+        button.innerHTML = "💬";
+        button.style.cssText =
+          "position:fixed;bottom:20px;right:20px;width:60px;height:60px;border-radius:50%;border:none;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;font-size:28px;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:999999;transition:transform 0.2s;";
+        button.onmouseover = function () {
+          this.style.transform = "scale(1.1)";
+        };
+        button.onmouseout = function () {
+          this.style.transform = "scale(1)";
+        };
+
+        var iframe = document.createElement("iframe");
+        // ✅ REPLACE WITH YOUR USER ID
+        iframe.src =
+          "http://localhost:3000/embed/user_35pahTyo7g10PKzvHMyiM3c74af";
+        iframe.style.cssText =
+          "position:fixed;bottom:90px;right:20px;width:400px;height:600px;border:none;border-radius:12px;box-shadow:0 4px 30px rgba(0,0,0,0.2);z-index:999999;display:none;";
+
+        var isOpen = false;
+        button.onclick = function () {
+          isOpen = !isOpen;
+          iframe.style.display = isOpen ? "block" : "none";
+          button.innerHTML = isOpen ? "✕" : "💬";
+          button.style.background = isOpen
+            ? "#ef4444"
+            : "linear-gradient(135deg,#667eea 0%,#764ba2 100%)";
+        };
+
+        document.body.appendChild(button);
+        document.body.appendChild(iframe);
+      })();
+    </script>
+  </body>
+</html>

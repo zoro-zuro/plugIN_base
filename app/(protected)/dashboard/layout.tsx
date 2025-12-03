@@ -12,13 +12,13 @@ import {
   FiMenu,
   FiX,
 } from "react-icons/fi";
-
+import { GrDocumentTest } from "react-icons/gr";
 import { RxRocket as FiRocket } from "react-icons/rx";
 
 const sidebarItems = [
   { name: "Playground", icon: FiMessageSquare, path: "/dashboard/playground" },
   { name: "Sources", icon: FiDatabase, path: "/dashboard/sources" },
-  { name: "Analytics", icon: FiBarChart2, path: "/dashboard/analytics" },
+  { name: "Evaluation", icon: GrDocumentTest, path: "/dashboard/eval" },
   { name: "Activity", icon: FiActivity, path: "/dashboard/activity" },
   { name: "Contacts", icon: FiUsers, path: "/dashboard/contacts" },
   { name: "Deploy", icon: FiRocket, path: "/dashboard/deploy" },

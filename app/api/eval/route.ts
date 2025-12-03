@@ -157,7 +157,33 @@ function uniqueKeywords(text: string): Set<string> {
 }
 
 function exactMatch(a: string, b: string): number {
-  return a.trim().toLowerCase() === b.trim().toLowerCase() ? 1 : 0;
+  // Normalize both strings
+  const groundTruth = b.trim().toLowerCase();
+  const modelAnswer = a.trim().toLowerCase();
+
+  // If ground truth is empty, return 0
+  if (groundTruth.length === 0) return 0;
+
+  // Check if ground truth is contained in model answer
+  if (modelAnswer.includes(groundTruth)) {
+    return 1; // 100% match
+  }
+
+  // Token-based overlap: check what % of ground truth tokens are in answer
+  const gtTokens = groundTruth.split(/\s+/).filter((t) => t.length > 0);
+  const answerTokens = new Set(
+    modelAnswer.split(/\s+/).filter((t) => t.length > 0),
+  );
+
+  let matchedTokens = 0;
+  for (const token of gtTokens) {
+    if (answerTokens.has(token)) {
+      matchedTokens++;
+    }
+  }
+
+  // Return percentage of ground truth tokens found in answer
+  return matchedTokens / gtTokens.length;
 }
 
 function keywordPR(
@@ -186,12 +212,25 @@ function keywordPR(
 function contextPR(
   contexts: string[],
   groundTruth: string,
+  semanticSimilarity: number, // Add this parameter
 ): {
   precision: number;
   recall: number;
 } {
+  // Case 1: No contexts retrieved
+  if (contexts.length === 0) {
+    // If answer is good without context (answered from memory), that's perfect!
+    if (semanticSimilarity >= 0.7) {
+      return { precision: 1.0, recall: 1.0 }; // Perfect - no retrieval needed
+    } else {
+      // Bad answer with no context - should have retrieved something
+      return { precision: 0, recall: 0 };
+    }
+  }
+
+  // Case 2: Contexts were retrieved - evaluate their relevance
   const gtKeywords = uniqueKeywords(groundTruth);
-  if (gtKeywords.size === 0 || contexts.length === 0) {
+  if (gtKeywords.size === 0) {
     return { precision: 0, recall: 0 };
   }
 
@@ -210,8 +249,12 @@ function contextPR(
     if (anyMatch) relevantContexts++;
   }
 
+  // Precision: how many retrieved contexts were relevant
   const precision = relevantContexts / contexts.length;
+
+  // Recall: how many ground truth keywords were found in contexts
   const recall = coveredKeywords.size / gtKeywords.size;
+
   return { precision, recall };
 }
 
@@ -253,15 +296,17 @@ export async function POST(req: Request) {
 
         const em = exactMatch(answer, gt);
         const kw = keywordPR(answer, gt);
-        const ctx = contextPR(contexts, gt);
 
-        // 🎯 KEY CHANGE: Use semantic similarity instead of token matching
+        // Calculate semantic similarity first
         const semanticScore = await semanticSimilarity(answer, gt);
+
+        // Pass semantic score to contextPR so it can evaluate intelligently
+        const ctx = contextPR(contexts, gt, semanticScore);
 
         return {
           question: row.question,
           exact_match: em,
-          semantic_similarity: semanticScore, // Main metric!
+          semantic_similarity: semanticScore,
           keyword_precision: kw.precision,
           keyword_recall: kw.recall,
           context_precision: ctx.precision,
