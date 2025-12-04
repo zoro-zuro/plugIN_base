@@ -11,13 +11,21 @@ export const uploadDocument = async (
   fileBase64: string,
   fileName: string,
   fileSize: number,
-  namespace?: string,
+  namespace: string, // ✅ Make this REQUIRED instead of optional
 ) => {
   const user = await currentUser();
   if (!user) {
     return {
       success: false,
       error: "User not authenticated",
+    };
+  }
+
+  // ✅ Validate namespace is provided
+  if (!namespace) {
+    return {
+      success: false,
+      error: "Namespace is required for upload",
     };
   }
 
@@ -39,12 +47,12 @@ export const uploadDocument = async (
 
     const { storageId } = await uploadResponse.json();
 
-    // 2) preprocess -> chunks (no documentId yet)
+    // 2) preprocess -> chunks
     const documents = await preprocessDocument(
       fileBuffer,
       fileName,
-      user.id,
-      undefined as any, // or null
+      namespace, // ✅ Use namespace instead of user.id
+      undefined as any,
     );
 
     // 3) save Convex document with chunksCount
@@ -55,23 +63,28 @@ export const uploadDocument = async (
       fileType: getFileType(fileName),
       storageId: storageId as Id<"_storage">,
       chunksCount: documents.length,
-      namespace,
+      namespace: namespace, // ✅ Use the passed namespace
     });
 
-    // 4) attach documentId to each chunk’s metadata
+    // 4) attach documentId and namespace to each chunk's metadata
     const documentsWithId = documents.map((doc) => ({
       ...doc,
       metadata: {
         ...(doc.metadata || {}),
-        documentId, // used later in Pinecone delete filter
+        documentId, // ✅ For deletion filtering
         userId: user.id,
+        namespace: namespace, // ✅ Add namespace to metadata
         fileName,
       },
     }));
 
-    // 5) upsert into Pinecone
-    const vectorStore = await getPineconeVectorStore(namespace || user.id);
+    // 5) upsert into Pinecone with correct namespace
+    const vectorStore = await getPineconeVectorStore(namespace);
     await vectorStore.addDocuments(documentsWithId);
+
+    console.log(
+      `✅ Uploaded ${documents.length} chunks to namespace: ${namespace}`,
+    );
 
     return {
       success: true,

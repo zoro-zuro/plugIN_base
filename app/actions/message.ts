@@ -6,6 +6,8 @@ import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { HumanMessage, AIMessage } from "@langchain/core/messages";
 import { MemorySaver } from "@langchain/langgraph";
 import { KnowledgeBaseTool } from "@/lib/tools";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
 
 type Message = {
   role: "user" | "assistant";
@@ -20,6 +22,49 @@ type GenerateOptions = {
 };
 
 const checkpointer = new MemorySaver();
+
+// ✅ Default system prompt if not configured
+const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant with access to a knowledge base through the knowledge_base_search tool.
+
+
+CRITICAL INSTRUCTIONS:
+
+
+1. WHEN TO USE THE TOOL:
+✅ USE knowledge_base_search ONLY for:
+- Specific customer/account questions (e.g., "Who is the account manager?")
+- Data retrieval requests (e.g., "What is the revenue?")
+- Document-based information
+
+
+❌ NEVER use the tool for:
+- Greetings: "hi", "hello", "hey", "good morning"
+- Acknowledgments: "thanks", "ok", "good", "great", "bye"
+- Chitchat: "how are you", "nice", "cool"
+- Apologies or clarifications
+
+
+2. FOR NON-SEARCH QUERIES:
+- Just respond naturally and politely
+- Examples:
+  * User: "hi" → You: "Hello! How can I help you today?"
+  * User: "thanks" → You: "You're welcome! Let me know if you need anything else."
+  * User: "bye" → You: "Goodbye! Feel free to come back anytime."
+
+
+3. CONVERSATION MEMORY:
+- Check conversation history first
+- If answer was already given, use it from memory
+- Only call tool for NEW information requests
+
+
+4. RESPONSE STYLE:
+- Be concise and friendly
+- Don't mention tools or processes
+- Answer directly
+
+
+Remember: Not every message needs a tool call. Use common sense!`;
 
 export const generateResponse = async (
   query: string,
@@ -62,56 +107,35 @@ export const generateResponse = async (
   console.log("Using namespace:", finalNamespace);
 
   try {
+    // ✅ Fetch chatbot settings by namespace (fast lookup)
+    const chatbot = await fetchQuery(api.documents.getChatbotByNamespace, {
+      namespace: finalNamespace,
+    });
+
+    // ✅ Use chatbot settings or fallback to defaults
+    const modelName = chatbot?.modelName || "llama-3.1-8b-instant";
+    const temperature = chatbot?.temperature ?? 0.5;
+    const systemPrompt = chatbot?.systemPrompt || DEFAULT_SYSTEM_PROMPT;
+    const maxTokens = chatbot?.maxTokens || 500;
+
+    console.log("Using model:", modelName, "temp:", temperature);
+
     const model = new ChatGroq({
       apiKey: process.env.GROQ_API_KEY || "",
-      model: "llama-3.1-8b-instant",
-      temperature: 0.5,
+      model: modelName, // ✅ From settings
+      temperature: temperature, // ✅ From settings
+      maxTokens: maxTokens, // ✅ From settings
     });
 
     // ✅ Use finalNamespace instead of namespace
     const kbTool = new KnowledgeBaseTool(finalNamespace);
     const tools = [kbTool];
 
-    const systemPrompt = `You are a helpful AI assistant with access to a knowledge base through the knowledge_base_search tool.
-
-CRITICAL INSTRUCTIONS:
-
-1. WHEN TO USE THE TOOL:
-✅ USE knowledge_base_search ONLY for:
-- Specific customer/account questions (e.g., "Who is the account manager?")
-- Data retrieval requests (e.g., "What is the revenue?")
-- Document-based information
-
-❌ NEVER use the tool for:
-- Greetings: "hi", "hello", "hey", "good morning"
-- Acknowledgments: "thanks", "ok", "good", "great", "bye"
-- Chitchat: "how are you", "nice", "cool"
-- Apologies or clarifications
-
-2. FOR NON-SEARCH QUERIES:
-- Just respond naturally and politely
-- Examples:
-  * User: "hi" → You: "Hello! How can I help you today?"
-  * User: "thanks" → You: "You're welcome! Let me know if you need anything else."
-  * User: "bye" → You: "Goodbye! Feel free to come back anytime."
-
-3. CONVERSATION MEMORY:
-- Check conversation history first
-- If answer was already given, use it from memory
-- Only call tool for NEW information requests
-
-4. RESPONSE STYLE:
-- Be concise and friendly
-- Don't mention tools or processes
-- Answer directly
-
-Remember: Not every message needs a tool call. Use common sense!`;
-
     const agent = createReactAgent({
       llm: model,
       tools,
       checkpointSaver: checkpointer,
-      messageModifier: systemPrompt,
+      messageModifier: systemPrompt, // ✅ From settings or default
     });
 
     const config = {

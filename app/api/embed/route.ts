@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
-    const { message, history, userid } = await req.json();
+    const { message, history, chatbotId, namespace } = await req.json();
 
     if (!message) {
       return NextResponse.json(
@@ -14,25 +14,25 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ Check userid from request body instead of Clerk
-    if (!userid) {
+    // ✅ Check namespace from request body
+    if (!namespace) {
       return NextResponse.json(
-        { success: false, error: "User ID is required" },
+        { success: false, error: "Namespace is required" },
         { status: 400 },
       );
     }
 
-    const namespace = userid; // Use userid from widget
-    const sessionId = `embed-${Date.now()}`;
+    const sessionId = `embed-${chatbotId}-${Date.now()}`;
 
     console.log("📞 Embed chat request:", {
       question: message.substring(0, 50),
+      chatbotId,
       namespace,
     });
 
     const result = await generateResponse(message, {
       evalMode: false,
-      namespace: namespace,
+      namespace: namespace, // ✅ Use namespace from chatbot
       sessionId: sessionId,
       chatHistory: history || [],
     });

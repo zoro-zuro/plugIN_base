@@ -1,28 +1,36 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, use } from "react";
 import { FiSend, FiLoader, FiRefreshCw } from "react-icons/fi";
 import { generateResponse } from "@/app/actions/message";
-import { useUser } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
-  latencyMs?: number; // ✅ latency for assistant messages
+  latencyMs?: number;
 };
 
-export default function PlaygroundPage() {
-  const { user } = useUser();
+export default function PlaygroundPage({
+  params,
+}: {
+  params: Promise<{ chatbotId: string }>;
+}) {
+  const { chatbotId } = use(params);
+
+  // ✅ Fetch chatbot details
+  const chatbot = useQuery(api.documents.getChatbotById, { chatbotId });
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [mounted, setMounted] = useState(false); // ✅ Track client mount
+  const [mounted, setMounted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // ✅ Set mounted state after hydration
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -40,7 +48,7 @@ export default function PlaygroundPage() {
   }, [input]);
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !chatbot) return;
 
     const currentInput = input;
     setInput("");
@@ -80,15 +88,16 @@ export default function PlaygroundPage() {
     });
 
     try {
-      const sessionId = user?.id || "default";
+      const sessionId = `playground-${chatbotId}`;
 
       console.log(
         "🔵 CLIENT: About to call generateResponse with history length:",
         historyForServer.length,
       );
 
+      // ✅ Use chatbot namespace
       const response = await generateResponse(currentInput, {
-        namespace: user?.id,
+        namespace: chatbot.namespace,
         sessionId,
         evalMode: false,
         chatHistory: historyForServer,
@@ -163,15 +172,23 @@ export default function PlaygroundPage() {
     setMessages([]);
   };
 
+  if (!chatbot) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-gray-500">Loading chatbot...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen bg-background">
-      {/* Top Bar with Agent Info */}
+      {/* Top Bar with Chatbot Info */}
       <div className="h-16 border-b border-border bg-card flex items-center justify-between px-6">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold">
-            {/* ✅ Only render date on client after hydration */}
-            Agent
-          </h2>
+          <h2 className="text-lg font-semibold">{chatbot.name}</h2>
+          <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded">
+            {chatbot.chatbotId}
+          </span>
         </div>
         <button
           onClick={handleReset}
@@ -191,9 +208,12 @@ export default function PlaygroundPage() {
                 <p className="text-white text-sm">
                   Hi! What can I help you with?
                 </p>
-                {user && (
-                  <p className="text-white/60 text-xs mt-2">
-                    Connected to namespace: {user.id}
+                <p className="text-white/60 text-xs mt-2">
+                  Chatbot: {chatbot.name}
+                </p>
+                {chatbot.description && (
+                  <p className="text-white/40 text-xs mt-1">
+                    {chatbot.description}
                   </p>
                 )}
               </div>

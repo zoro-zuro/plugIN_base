@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, use } from "react";
 import { FiSend, FiLoader } from "react-icons/fi";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 type Message = {
   id: string;
@@ -12,28 +14,42 @@ type Message = {
 export default function EmbedChatWidget({
   params,
 }: {
-  params: Promise<{ userid: string }>;
+  params: Promise<{ chatbotId: string }>;
 }) {
-  // ✅ Unwrap params using React.use()
-  const { userid } = use(params);
+  // ✅ Use chatbotId instead of userid
+  const { chatbotId } = use(params);
+  console.log("EmbedChatWidget chatbotId:", chatbotId);
+  // const chatbotIdStr = chatbotId.toString();
+  // console.log("EmbedChatWidget chatbotIdStr:", chatbotIdStr);
+  // ✅ Fetch chatbot details for branding and settings
+  const chatbot = useQuery(api.documents.getChatbotById, {
+    chatbotId: chatbotId,
+  });
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: "Hi! How can I help you today?",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // ✅ Set welcome message from chatbot settings
+  useEffect(() => {
+    if (chatbot) {
+      setMessages([
+        {
+          id: "welcome",
+          role: "assistant",
+          content: chatbot.welcomeMessage || "Hi! How can I help you today?",
+        },
+      ]);
+    }
+  }, [chatbot]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !chatbot) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -46,13 +62,17 @@ export default function EmbedChatWidget({
     setIsLoading(true);
 
     try {
+      console.log("Sending message with chatbotId:", chatbotId);
+      console.log("Using namespace:", chatbot.namespace);
+
       const response = await fetch("/api/embed", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: input,
           history: messages.slice(-5),
-          userid: userid, // ✅ Use unwrapped userid
+          chatbotId: chatbotId, // ✅ Send chatbotId
+          namespace: chatbot.namespace, // ✅ Send namespace
         }),
       });
 
@@ -69,16 +89,30 @@ export default function EmbedChatWidget({
         throw new Error(data.error);
       }
     } catch (error) {
+      // ✅ Use error message from settings
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         role: "assistant",
-        content: "Sorry, something went wrong. Please try again.",
+        content:
+          chatbot?.errorMessage ||
+          "Sorry, something went wrong. Please try again.",
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (!chatbot) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading chatbot...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-white font-sans">
@@ -89,7 +123,7 @@ export default function EmbedChatWidget({
             🤖
           </div>
           <div>
-            <h3 className="font-semibold text-base">AI Assistant</h3>
+            <h3 className="font-semibold text-base">{chatbot.name}</h3>
             <p className="text-xs opacity-90">Online</p>
           </div>
         </div>
@@ -145,7 +179,7 @@ export default function EmbedChatWidget({
           </button>
         </div>
         <p className="text-xs text-gray-500 text-center mt-2">
-          Powered by Your AI
+          Powered by {chatbot.name}
         </p>
       </div>
     </div>

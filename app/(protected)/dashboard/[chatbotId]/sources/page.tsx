@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, use } from "react";
 import { FiPlus, FiFile, FiTrash2, FiInfo } from "react-icons/fi";
 import { uploadDocument } from "@/app/actions/upload";
-import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import toast, { Toaster } from "react-hot-toast";
@@ -11,20 +10,30 @@ import { Id } from "@/convex/_generated/dataModel";
 import { deletePineconeVectors, resetVectors } from "@/app/actions/delFile";
 import { RiResetLeftLine } from "react-icons/ri";
 
-export default function SourcesPage() {
-  const { user } = useUser();
+export default function SourcesPage({
+  params,
+}: {
+  params: Promise<{ chatbotId: string }>;
+}) {
+  const { chatbotId } = use(params);
+
+  // ✅ Fetch chatbot details
+  const chatbot = useQuery(api.documents.getChatbotById, { chatbotId });
+
   const [isUploading, setIsUploading] = useState(false);
 
-  // Fetch user's documents from Convex
+  // ✅ Fetch documents for this specific chatbot (by namespace)
   const documents = useQuery(
-    api.documents.getUserDocuments,
-    user?.id ? { userId: user.id } : "skip",
+    api.documents.getDocumentsByNamespace,
+    chatbot ? { namespace: chatbot.namespace } : "skip",
   );
 
   const deleteDoc = useMutation(api.documents.deleteDocument);
-  const deleteAllUserDocuments = useMutation(
-    api.documents.deleteAllUserDocuments,
+  const deleteAllNamespaceDocuments = useMutation(
+    api.documents.deleteAllNamespaceDocuments,
   );
+  const updateChatbotDocCount = useMutation(api.documents.updateChatbot);
+
   // Calculate total size
   const totalSize = documents?.reduce((sum, doc) => sum + doc.fileSize, 0) || 0;
   const totalSizeKB = (totalSize / 1024).toFixed(2);
@@ -51,6 +60,11 @@ export default function SourcesPage() {
 
   // Handle file upload
   const handleUpload = async (files: FileList) => {
+    if (!chatbot) {
+      toast.error("Chatbot not loaded yet");
+      return;
+    }
+
     setIsUploading(true);
 
     for (let i = 0; i < files.length; i++) {
@@ -61,18 +75,25 @@ export default function SourcesPage() {
         const arrayBuffer = await file.arrayBuffer();
         const base64String = arrayBufferToBase64(arrayBuffer);
 
-        // Upload using your action
+        // ✅ Upload using chatbot's namespace
         const result = await uploadDocument(
           base64String,
           file.name,
           file.size,
-          user?.id,
+          chatbot.namespace, // Use namespace instead of userId
         );
 
         if (result.success) {
           toast.success(
             `${file.name} uploaded successfully! (${result.chunks} chunks)`,
           );
+
+          // ✅ Update chatbot document count
+          const newDocCount = (documents?.length || 0) + 1;
+          await updateChatbotDocCount({
+            id: chatbot._id,
+            totalDocuments: newDocCount,
+          });
         } else {
           toast.error(`Failed to upload ${file.name}: ${result.error}`);
         }
@@ -89,19 +110,24 @@ export default function SourcesPage() {
     documentId: Id<"documents">,
     fileName: string,
   ) => {
+    if (!chatbot) return;
+
     console.log("🧹 handleDelete called", {
       documentId,
       fileName,
-      userId: user?.id,
+      namespace: chatbot.namespace,
     });
 
     try {
       console.log("➡️ Calling deletePineconeVectors first...", {
-        namespace: user?.id,
+        namespace: chatbot.namespace,
         documentId,
       });
 
-      const response = await deletePineconeVectors(documentId, user!.id);
+      const response = await deletePineconeVectors(
+        documentId,
+        chatbot.namespace,
+      );
       console.log("✅ deletePineconeVectors response:", response);
 
       if (!response.success) {
@@ -112,6 +138,14 @@ export default function SourcesPage() {
       if (response.success) {
         await deleteDoc({ documentId });
         console.log("✅ Convex delete done");
+
+        // ✅ Update chatbot document count
+        const newDocCount = Math.max((documents?.length || 1) - 1, 0);
+        await updateChatbotDocCount({
+          id: chatbot._id,
+          totalDocuments: newDocCount,
+        });
+
         toast.success(
           response.message ||
             `${fileName} deleted successfully with vectors for documentId ${documentId.toString()}`,
@@ -126,19 +160,38 @@ export default function SourcesPage() {
   };
 
   const handleResetAll = async () => {
-    if (!user?.id) return;
-    if (!confirm("Reset all files and vectors for this user?")) return;
+    if (!chatbot) return;
+    if (
+      !confirm(
+        `Reset all files and vectors for chatbot "${chatbot.name}"? This cannot be undone.`,
+      )
+    )
+      return;
 
     try {
-      console.log("➡️ Reset: deleting all vectors for namespace", user.id);
-      const vecRes = await resetVectors(user.id);
+      console.log(
+        "➡️ Reset: deleting all vectors for namespace",
+        chatbot.namespace,
+      );
+      const vecRes = await resetVectors(chatbot.namespace);
       console.log("✅ resetVectors response:", vecRes);
       if (!vecRes.success) throw new Error(vecRes.error);
 
-      console.log("➡️ Reset: deleting all Convex documents for user", user.id);
+      console.log(
+        "➡️ Reset: deleting all Convex documents for namespace",
+        chatbot.namespace,
+      );
       if (vecRes.success) {
-        const deletedCount = await deleteAllUserDocuments({ userId: user.id });
-        console.log("✅ deleteAllUserDocuments deleted:", deletedCount);
+        const deletedCount = await deleteAllNamespaceDocuments({
+          namespace: chatbot.namespace,
+        });
+        console.log("✅ deleteAllNamespaceDocuments deleted:", deletedCount);
+
+        // ✅ Update chatbot document count to 0
+        await updateChatbotDocCount({
+          id: chatbot._id,
+          totalDocuments: 0,
+        });
 
         toast.success(
           `Reset complete: removed ${deletedCount} documents and all vectors.`,
@@ -146,9 +199,17 @@ export default function SourcesPage() {
       }
     } catch (err) {
       console.error("❌ Reset error:", err);
-      toast.error("Failed to reset all data for this user.");
+      toast.error("Failed to reset all data for this chatbot.");
     }
   };
+
+  if (!chatbot) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <p className="text-gray-500">Loading sources...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -157,10 +218,14 @@ export default function SourcesPage() {
       {/* Header */}
       <div className="border-b border-border bg-card px-6 pb-3 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">Files</h1>
+          <h1 className="text-xl font-bold">Files - {chatbot.name}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Upload documents to train your AI. Extract text from PDFs, DOCX, and
             TXT files.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Namespace:{" "}
+            <code className="bg-muted px-1 rounded">{chatbot.namespace}</code>
           </p>
         </div>
 
@@ -229,11 +294,11 @@ export default function SourcesPage() {
       <div className="border-t border-border bg-card px-6 py-4 flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
           Total size: <span className="font-semibold">{totalSizeKB} KB</span> /{" "}
-          {maxSizeKB} KB
+          {maxSizeKB} KB • {documents?.length || 0} files
         </div>
-        <button className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">
-          View all sources
-        </button>
+        <div className="text-xs text-muted-foreground">
+          Chatbot: {chatbot.name}
+        </div>
       </div>
     </div>
   );

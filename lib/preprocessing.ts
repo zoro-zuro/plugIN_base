@@ -125,8 +125,8 @@ async function splitIntoChunks(pages: PageChunk[]): Promise<Document[]> {
 export async function preprocessDocument(
   fileBuffer: Buffer,
   fileName: string,
-  userId: string,
-  documentId: Id<"documents">,
+  namespace: string,
+  documentId?: Id<"documents">,
 ): Promise<Document[]> {
   // 1. Load raw pages
   const pages = await loadDocument(fileBuffer, fileName);
@@ -151,9 +151,9 @@ export async function preprocessDocument(
       pageContent: text,
       metadata: {
         ...(doc.metadata ?? {}),
-        userId,
+        namespace,
         fileName,
-        pageNumber, // <- where in the file
+        pageNumber,
         chunkIndex: index,
         totalChunks,
         uploadedAt,

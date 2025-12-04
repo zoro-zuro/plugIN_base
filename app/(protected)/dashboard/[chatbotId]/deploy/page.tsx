@@ -1,16 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useState, useEffect, use } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
-export default function DeployPage() {
-  const { user } = useUser();
+export default function DeployPage({
+  params,
+}: {
+  params: Promise<{ chatbotId: string }>;
+}) {
+  const { chatbotId } = use(params);
   const [copied, setCopied] = useState(false);
-  const [embedUrl, setEmbedUrl] = useState("http://localhost:3000/embed");
+  const [embedUrl, setEmbedUrl] = useState("");
+
+  // ✅ Fetch chatbot details from Convex
+  const chatbot = useQuery(api.documents.getChatbotById, { chatbotId });
 
   useEffect(() => {
-    setEmbedUrl(`${window.location.origin}/embed`);
-  }, []);
+    if (typeof window !== "undefined") {
+      setEmbedUrl(`${window.location.origin}/embed/${chatbotId}`);
+    }
+  }, [chatbotId]);
 
   const embedCode = `<!-- Add this code before closing </body> tag -->
 <script>
@@ -52,14 +62,22 @@ export default function DeployPage() {
     window.open(embedUrl, "_blank");
   };
 
+  if (!chatbot) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-gray-500">Loading chatbot...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen  from-indigo-50 via-purple-50 to-pink-50   py-10 px-4">
+    <div className="min-h-screen from-indigo-50 via-purple-50 to-pink-50 py-10 px-4">
       <div className="max-w-5xl mx-auto">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
-              Deploy Your Chatbot 🚀
+              Deploy {chatbot.name} 🚀
             </h1>
             <p className="text-gray-700 dark:text-gray-300 text-lg">
               Copy and paste this code into your website to add the chatbot
@@ -142,7 +160,13 @@ export default function DeployPage() {
                 </span>
                 <span>
                   Paste the code before the closing{" "}
-                  <code className="bg-white dark:bg-gray-700 px-2 py-1 rounded border border-indigo-200 dark:border-indigo-600 text-indigo-700 dark:text-indigo-300 font-mono text-sm">
+                  <code
+                    className="bg-white dark:bg-gray-700 px-2 py-1 rounded
+                    border border-indigo-200 dark:border-indigo-600
+                    text-indigo-700 dark:text-indigo-300 font-mono
+                    text-sm"
+                  >
+                    {" "}
                     &lt;/body&gt;
                   </code>{" "}
                   tag
@@ -166,44 +190,58 @@ export default function DeployPage() {
           </div>
 
           {/* Stats */}
-          {user && (
-            <div className="mt-8 p-6 bg-slate-50 dark:bg-gray-700 rounded-xl border-2 border-slate-200 dark:border-gray-600 shadow-sm">
-              <h3 className="font-semibold mb-3 text-gray-800 dark:text-gray-200 text-lg">
-                Chatbot Info
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">
-                    Owner
-                  </p>
-                  <p className="font-mono text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 px-3 py-2 rounded border border-slate-200 dark:border-gray-600">
-                    {user.emailAddresses[0]?.emailAddress}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">
-                    Namespace
-                  </p>
-                  <p className="font-mono text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 px-3 py-2 rounded border border-slate-200 dark:border-gray-600">
-                    {user.id}
-                  </p>
-                </div>
-                <div className="md:col-span-2">
-                  <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">
-                    Direct Link
-                  </p>
-                  <a
-                    href={embedUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline break-all bg-white dark:bg-gray-800 px-3 py-2 rounded border border-slate-200 dark:border-gray-600 block"
-                  >
-                    {embedUrl}
-                  </a>
-                </div>
+          <div className="mt-8 p-6 bg-slate-50 dark:bg-gray-700 rounded-xl border-2 border-slate-200 dark:border-gray-600 shadow-sm">
+            <h3 className="font-semibold mb-3 text-gray-800 dark:text-gray-200 text-lg">
+              Chatbot Info
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">
+                  Chatbot Name
+                </p>
+                <p className="font-mono text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 px-3 py-2 rounded border border-slate-200 dark:border-gray-600">
+                  {chatbot.name}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">
+                  Chatbot ID
+                </p>
+                <p className="font-mono text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 px-3 py-2 rounded border border-slate-200 dark:border-gray-600">
+                  {chatbot.chatbotId}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">
+                  Namespace
+                </p>
+                <p className="font-mono text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 px-3 py-2 rounded border border-slate-200 dark:border-gray-600 break-all">
+                  {chatbot.namespace}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">
+                  Website
+                </p>
+                <p className="font-mono text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 px-3 py-2 rounded border border-slate-200 dark:border-gray-600 break-all">
+                  {chatbot.websiteUrl || "Not set"}
+                </p>
+              </div>
+              <div className="md:col-span-2">
+                <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">
+                  Direct Link
+                </p>
+                <a
+                  href={embedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline break-all bg-white dark:bg-gray-800 px-3 py-2 rounded border border-slate-200 dark:border-gray-600 block"
+                >
+                  {embedUrl}
+                </a>
               </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

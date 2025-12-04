@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, use } from "react";
 import { generateResponse } from "@/app/actions/message";
-import { useUser } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 type TestCase = {
   question: string;
@@ -43,11 +44,18 @@ type EvalResult = {
   rows: CustomRow[];
 };
 
-export default function SettingsPage() {
+export default function EvalPage({
+  params,
+}: {
+  params: Promise<{ chatbotId: string }>;
+}) {
+  const { chatbotId } = use(params);
+
+  // ✅ Fetch chatbot details
+  const chatbot = useQuery(api.documents.getChatbotById, { chatbotId });
+
   const [rawCases, setRawCases] = useState("");
   const [isRunning, setIsRunning] = useState(false);
-  const { user } = useUser();
-  const userId = user?.id || "anonymous";
   const [evalResult, setEvalResult] = useState<EvalResult | null>(null);
   const [dataset, setDataset] = useState<DatasetRow[]>([]);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
@@ -68,6 +76,11 @@ export default function SettingsPage() {
   };
 
   const handleRunEval = async () => {
+    if (!chatbot) {
+      alert("Chatbot not loaded yet. Please wait.");
+      return;
+    }
+
     const tests = parseTestCases();
     if (tests.length === 0) {
       alert(
@@ -90,8 +103,8 @@ export default function SettingsPage() {
           const start = performance.now();
           const res = await generateResponse(tc.question, {
             evalMode: true,
-            namespace: userId,
-            sessionId: "eval-session",
+            namespace: chatbot.namespace, // ✅ Use chatbot namespace
+            sessionId: `eval-${chatbotId}`,
           });
           const end = performance.now();
           const latency = end - start;
@@ -127,7 +140,7 @@ export default function SettingsPage() {
 
       setDataset(generatedDataset);
 
-      // Step 2: Send to evaluation API (without full metadata, just text)
+      // Step 2: Send to evaluation API
       const evalPayload = generatedDataset.map((d) => ({
         question: d.question,
         answer: d.answer,
@@ -164,8 +177,12 @@ export default function SettingsPage() {
       return;
     }
 
-    // Combine evaluation results with full dataset
     const fullResults = {
+      chatbot: {
+        id: chatbot?.chatbotId,
+        name: chatbot?.name,
+        namespace: chatbot?.namespace,
+      },
       evaluation_metrics: evalResult,
       test_cases: dataset,
       summary: {
@@ -175,6 +192,7 @@ export default function SettingsPage() {
           calculateOverallScore(evalResult.overall),
         ),
       },
+      timestamp: new Date().toISOString(),
     };
 
     const blob = new Blob([JSON.stringify(fullResults, null, 2)], {
@@ -183,13 +201,13 @@ export default function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "evaluation_results.json";
+    a.download = `evaluation_${chatbot?.chatbotId}_${new Date().toISOString().split("T")[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const handleDownloadHTMLReport = () => {
-    if (!evalResult || dataset.length === 0) {
+    if (!evalResult || dataset.length === 0 || !chatbot) {
       alert("No evaluation data to download. Run evaluation first.");
       return;
     }
@@ -205,7 +223,7 @@ export default function SettingsPage() {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RAG Evaluation Report - ${new Date().toLocaleDateString()}</title>
+  <title>RAG Evaluation Report - ${chatbot.name} - ${new Date().toLocaleDateString()}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -231,6 +249,12 @@ export default function SettingsPage() {
     .header h1 {
       color: #1e293b;
       font-size: 32px;
+      margin-bottom: 10px;
+    }
+    .header .chatbot-name {
+      color: #6366f1;
+      font-size: 24px;
+      font-weight: 600;
       margin-bottom: 10px;
     }
     .header .meta {
@@ -387,6 +411,24 @@ export default function SettingsPage() {
       font-weight: 700;
       color: #1e293b;
     }
+    .chatbot-info {
+      background: #f8fafc;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border: 1px solid #e2e8f0;
+    }
+    .chatbot-info h3 {
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 10px;
+    }
+    .chatbot-info .info-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
     @media print {
       body { background: white; padding: 0; }
       .container { box-shadow: none; }
@@ -398,11 +440,39 @@ export default function SettingsPage() {
     <!-- Header -->
     <div class="header">
       <h1>RAG Evaluation Report</h1>
+      <div class="chatbot-name">🤖 ${chatbot.name}</div>
       <div class="meta">
         Generated on: ${new Date().toLocaleString()} | 
         Total Tests: ${dataset.length} |
-        User: ${user?.fullName || "Anonymous"}
+        Chatbot ID: ${chatbot.chatbotId}
       </div>
+    </div>
+
+    <!-- Chatbot Info -->
+    <div class="chatbot-info">
+      <h3>Chatbot Information</h3>
+      <div class="info-row">
+        <span>Name:</span>
+        <span><strong>${chatbot.name}</strong></span>
+      </div>
+      <div class="info-row">
+        <span>ID:</span>
+        <span>de>${chatbot.chatbotId}</code></span>
+      </div>
+      <div class="info-row">
+        <span>Namespace:</span>
+        <span>de>${chatbot.namespace}</code></span>
+      </div>
+      ${
+        chatbot.websiteUrl
+          ? `
+      <div class="info-row">
+        <span>Website:</span>
+        <span>${chatbot.websiteUrl}</span>
+      </div>
+      `
+          : ""
+      }
     </div>
 
     <!-- Overall Score -->
@@ -561,7 +631,7 @@ export default function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `evaluation_report_${new Date().toISOString().split("T")[0]}.html`;
+    a.download = `evaluation_report_${chatbot.chatbotId}_${new Date().toISOString().split("T")[0]}.html`;
     a.click();
     URL.revokeObjectURL(url);
     setIsGeneratingReport(false);
@@ -583,6 +653,14 @@ export default function SettingsPage() {
     return "badge-poor";
   }
 
+  if (!chatbot) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">Loading chatbot...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       <div className="max-w-5xl mx-auto py-10 px-4 space-y-8">
@@ -591,7 +669,7 @@ export default function SettingsPage() {
           <div>
             <h1 className="text-2xl font-semibold">RAG Evaluation</h1>
             <p className="text-sm text-muted-foreground">
-              Test your chatbot's performance with custom test cases
+              Testing: <strong>{chatbot.name}</strong>
             </p>
           </div>
           <div className="flex gap-2">
