@@ -35,10 +35,16 @@
       <p><strong>Look bottom-right for chat button! 💬</strong></p>
     </div>
 
-    <!-- CHATBOT CODE -->
     <!-- Add this code before closing </body> tag -->
     <script>
       (function () {
+        // ✅ Preload the iframe to warm up the connection
+        var preloadLink = document.createElement("link");
+        preloadLink.rel = "preload";
+        preloadLink.as = "document";
+        preloadLink.href = "http://localhost:3000/embed/bot_mirl65iu_uwhbz3z";
+        document.head.appendChild(preloadLink);
+
         // Create chat button
         var button = document.createElement("button");
         button.innerHTML = "💬";
@@ -51,11 +57,21 @@
           this.style.transform = "scale(1)";
         };
 
-        // Create iframe
+        // Create iframe with loading="eager" for faster initial load
         var iframe = document.createElement("iframe");
         iframe.src = "http://localhost:3000/embed/bot_mirl65iu_uwhbz3z";
+        iframe.loading = "eager"; // ✅ Load immediately, not lazy
         iframe.style.cssText =
           "position:fixed;bottom:90px;right:20px;width:400px;height:600px;border:none;border-radius:12px;box-shadow:0 4px 30px rgba(0,0,0,0.2);z-index:999999;display:none;";
+
+        // ✅ Preload on page load (hidden) to warm up
+        window.addEventListener("load", function () {
+          document.body.appendChild(iframe);
+          // Warm up by loading the iframe in background
+          setTimeout(function () {
+            iframe.style.display = "none"; // Keep hidden until button click
+          }, 100);
+        });
 
         // Toggle chat
         var isOpen = false;
@@ -68,9 +84,8 @@
             : "linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%)";
         };
 
-        // Add to page
+        // Add button to page
         document.body.appendChild(button);
-        document.body.appendChild(iframe);
       })();
     </script>
   </body>

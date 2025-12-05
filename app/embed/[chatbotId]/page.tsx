@@ -16,12 +16,10 @@ export default function EmbedChatWidget({
 }: {
   params: Promise<{ chatbotId: string }>;
 }) {
-  // ✅ Use chatbotId instead of userid
   const { chatbotId } = use(params);
   console.log("EmbedChatWidget chatbotId:", chatbotId);
-  // const chatbotIdStr = chatbotId.toString();
-  // console.log("EmbedChatWidget chatbotIdStr:", chatbotIdStr);
-  // ✅ Fetch chatbot details for branding and settings
+
+  // ✅ Keep using api.documents.getChatbotById since that's where your function is
   const chatbot = useQuery(api.documents.getChatbotById, {
     chatbotId: chatbotId,
   });
@@ -31,9 +29,12 @@ export default function EmbedChatWidget({
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // ✅ Set welcome message from chatbot settings
+  // ✅ CRITICAL FIX: Track if welcome message has been initialized
+  const welcomeInitialized = useRef(false);
+
+  // Set welcome message ONLY ONCE
   useEffect(() => {
-    if (chatbot) {
+    if (chatbot && !welcomeInitialized.current) {
       setMessages([
         {
           id: "welcome",
@@ -41,6 +42,7 @@ export default function EmbedChatWidget({
           content: chatbot.welcomeMessage || "Hi! How can I help you today?",
         },
       ]);
+      welcomeInitialized.current = true; // ✅ Mark as initialized
     }
   }, [chatbot]);
 
@@ -51,13 +53,20 @@ export default function EmbedChatWidget({
   const handleSend = async () => {
     if (!input.trim() || isLoading || !chatbot) return;
 
+    // ✅ Save input value BEFORE clearing
+    const currentInput = input.trim();
+
+    // ✅ Create user message with saved value
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: "user",
-      content: input,
+      content: currentInput,
     };
 
+    // ✅ Add to messages first
     setMessages((prev) => [...prev, userMessage]);
+
+    // ✅ Then clear input
     setInput("");
     setIsLoading(true);
 
@@ -69,10 +78,9 @@ export default function EmbedChatWidget({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: input,
+          message: currentInput, // ✅ Use saved value
           history: messages.slice(-5),
-          chatbotId: chatbotId, // ✅ Send chatbotId
-          namespace: chatbot.namespace, // ✅ Send namespace
+          chatbot: chatbot,
         }),
       });
 
@@ -89,7 +97,7 @@ export default function EmbedChatWidget({
         throw new Error(data.error);
       }
     } catch (error) {
-      // ✅ Use error message from settings
+      console.error("Chat error:", error);
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         role: "assistant",
@@ -100,6 +108,14 @@ export default function EmbedChatWidget({
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Better keyboard handler
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
   };
 
@@ -139,8 +155,8 @@ export default function EmbedChatWidget({
             <div
               className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm ${
                 msg.role === "user"
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-gray-900 border border-gray-200"
+                  ? "bg-blue-600 text-white rounded-br-sm"
+                  : "bg-white text-gray-900 border border-gray-200 rounded-bl-sm"
               }`}
             >
               <p className="text-sm leading-relaxed whitespace-pre-wrap">
@@ -151,7 +167,7 @@ export default function EmbedChatWidget({
         ))}
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
+            <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
               <FiLoader className="animate-spin text-gray-600" size={18} />
             </div>
           </div>
@@ -166,9 +182,10 @@ export default function EmbedChatWidget({
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && handleSend()}
+            onKeyPress={handleKeyPress}
             placeholder="Type your message..."
-            className="flex-1 px-4 py-2.5 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-black"
+            disabled={isLoading}
+            className="flex-1 px-4 py-2.5 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-black disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <button
             onClick={handleSend}

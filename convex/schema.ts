@@ -10,7 +10,7 @@ export default defineSchema({
     storageId: v.id("_storage"),
     chunksCount: v.number(),
     uploadedAt: v.number(),
-    namespace: v.string(), // ✅ Changed from optional to required
+    namespace: v.string(),
     status: v.union(
       v.literal("uploading"),
       v.literal("processing"),
@@ -19,7 +19,7 @@ export default defineSchema({
     ),
   })
     .index("by_user", ["userId"])
-    .index("by_namespace", ["namespace"]) // ✅ Add namespace index
+    .index("by_namespace", ["namespace"])
     .index("by_status", ["status"]),
 
   chatbots: defineTable({
@@ -45,19 +45,23 @@ export default defineSchema({
     totalMessages: v.optional(v.number()),
     totalDocuments: v.optional(v.number()),
 
-    // ✅ New AI Configuration fields
+    // AI Configuration
     systemPrompt: v.optional(v.string()),
     temperature: v.optional(v.number()),
     modelName: v.optional(v.string()),
     maxTokens: v.optional(v.number()),
 
-    // ✅ New Conversation fields
+    // Conversation Settings
     welcomeMessage: v.optional(v.string()),
     errorMessage: v.optional(v.string()),
     responseLanguage: v.optional(v.string()),
 
-    // ✅ Advanced settings
+    // Advanced Settings
     timezone: v.optional(v.string()),
+
+    // Connection Tracking
+    lastActiveAt: v.optional(v.number()),
+    isConnected: v.optional(v.boolean()),
   })
     .index("by_userId", ["userId"])
     .index("by_chatbotId", ["chatbotId"])

@@ -18,6 +18,8 @@ import {
 import { GrDocumentTest } from "react-icons/gr";
 import { RxRocket as FiRocket } from "react-icons/rx";
 import { UserButton, useUser, SignOutButton } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 const sidebarItems = [
   { name: "Playground", icon: FiMessageSquare, path: "playground" },
@@ -45,8 +47,10 @@ export default function DashboardLayout({
   const router = useRouter();
   const { user } = useUser();
 
-  // TODO: Replace with actual connection check from settings/Convex
-  const isConnected = false; // Placeholder - check if chatbot is embedded and active
+  const chatbot = useQuery(api.documents.getChatbotById, { chatbotId });
+  const isConnected = chatbot?.lastActiveAt
+    ? Date.now() - chatbot.lastActiveAt < 5 * 60 * 1000
+    : false;
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">

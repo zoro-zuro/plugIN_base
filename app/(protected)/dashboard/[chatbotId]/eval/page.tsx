@@ -103,7 +103,7 @@ export default function EvalPage({
           const start = performance.now();
           const res = await generateResponse(tc.question, {
             evalMode: true,
-            namespace: chatbot.namespace, // ✅ Use chatbot namespace
+            chatbot: chatbot,
             sessionId: `eval-${chatbotId}`,
           });
           const end = performance.now();

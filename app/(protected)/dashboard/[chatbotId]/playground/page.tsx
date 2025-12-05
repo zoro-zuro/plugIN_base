@@ -5,6 +5,7 @@ import { FiSend, FiLoader, FiRefreshCw } from "react-icons/fi";
 import { generateResponse } from "@/app/actions/message";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Doc } from "@/convex/_generated/dataModel";
 
 type Message = {
   id: string;
@@ -97,7 +98,7 @@ export default function PlaygroundPage({
 
       // ✅ Use chatbot namespace
       const response = await generateResponse(currentInput, {
-        namespace: chatbot.namespace,
+        chatbot,
         sessionId,
         evalMode: false,
         chatHistory: historyForServer,

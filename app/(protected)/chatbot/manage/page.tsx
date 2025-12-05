@@ -76,8 +76,10 @@ export default function ManageChatbotsPage() {
                   )}
                   <div className="text-xs text-gray-500">
                     <p>
-                      ID: de className="bg-gray-100 px-1 rounded"
-                      <code>{chatbot.chatbotId}</code>
+                      ID:{" "}
+                      <code className="bg-gray-100 px-1 rounded">
+                        {chatbot.chatbotId}
+                      </code>
                     </p>
                     <p className="mt-1">
                       Created:{" "}
@@ -116,7 +118,7 @@ export default function ManageChatbotsPage() {
                   {/* ✅ Get Embed Code */}
                   <Link
                     href={`/dashboard/${chatbot.chatbotId}/deploy`}
-                    className="flex-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
+                    className="flex-1 px-3 py-2 dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-0 border-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors text-white"
                   >
                     <FiCode size={14} />
                     Embed

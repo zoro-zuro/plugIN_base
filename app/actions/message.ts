@@ -1,13 +1,12 @@
 "use server";
 
-import { currentUser } from "@clerk/nextjs/server";
+// import { currentUser } from "@clerk/nextjs/server";
 import { ChatGroq } from "@langchain/groq";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { HumanMessage, AIMessage } from "@langchain/core/messages";
 import { MemorySaver } from "@langchain/langgraph";
 import { KnowledgeBaseTool } from "@/lib/tools";
-import { fetchQuery } from "convex/nextjs";
-import { api } from "@/convex/_generated/api";
+import { Doc } from "@/convex/_generated/dataModel";
 
 type Message = {
   role: "user" | "assistant";
@@ -16,7 +15,7 @@ type Message = {
 
 type GenerateOptions = {
   chatHistory?: Message[];
-  namespace?: string;
+  chatbot: Doc<"chatbots">; // ✅ Type-safe chatbot object
   sessionId?: string;
   evalMode?: boolean;
 };
@@ -68,11 +67,11 @@ Remember: Not every message needs a tool call. Use common sense!`;
 
 export const generateResponse = async (
   query: string,
-  options: GenerateOptions = {},
+  options: GenerateOptions,
 ) => {
   const {
     chatHistory = [],
-    namespace,
+    chatbot,
     sessionId = "default",
     evalMode = false,
   } = options;
@@ -82,7 +81,7 @@ export const generateResponse = async (
   console.log("Eval mode:", evalMode);
   console.log("Chat history:", chatHistory.length, "messages");
   console.log("Session ID:", sessionId);
-
+  console.log("chatbot :", chatbot);
   if (!query?.trim()) {
     return {
       success: false,
@@ -91,26 +90,30 @@ export const generateResponse = async (
   }
 
   // ✅ Only check Clerk auth if namespace NOT provided
-  let finalNamespace = namespace;
+  let finalNamespace = chatbot.namespace;
 
   if (!finalNamespace) {
-    const user = await currentUser();
-    if (!user) {
-      return {
-        success: false,
-        error: "User not authenticated",
-      };
-    }
-    finalNamespace = user.id;
+    // const user = await currentUser();
+    // if (!user) {
+    //   return {
+    //     success: false,
+    //     error: "User not authenticated",
+    //   };
+    // }
+    // finalNamespace = user.id;
+    return {
+      success: false,
+      error: "Namspace not found or undefined",
+    };
   }
 
   console.log("Using namespace:", finalNamespace);
 
   try {
     // ✅ Fetch chatbot settings by namespace (fast lookup)
-    const chatbot = await fetchQuery(api.documents.getChatbotByNamespace, {
-      namespace: finalNamespace,
-    });
+    // const chatbot = await fetchQuery(api.documents.getChatbotByNamespace, {
+    //   namespace: finalNamespace,
+    // });
 
     // ✅ Use chatbot settings or fallback to defaults
     const modelName = chatbot?.modelName || "llama-3.1-8b-instant";
