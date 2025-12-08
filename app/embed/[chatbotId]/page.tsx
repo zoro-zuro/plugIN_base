@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, useRef, useEffect, use } from "react";
-import { FiSend, FiLoader } from "react-icons/fi";
-import { useQuery } from "convex/react";
+import { FiSend, FiLoader, FiThumbsUp, FiThumbsDown } from "react-icons/fi";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
+// ✅ Updated Message type to include feedback
 type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  messageId?: string | null; // ✅ Allow null
+  feedback?: "positive" | "negative" | null;
 };
 
 export default function EmbedChatWidget({
@@ -17,20 +20,22 @@ export default function EmbedChatWidget({
   params: Promise<{ chatbotId: string }>;
 }) {
   const { chatbotId } = use(params);
-  console.log("EmbedChatWidget chatbotId:", chatbotId);
 
-  // ✅ Keep using api.documents.getChatbotById since that's where your function is
   const chatbot = useQuery(api.documents.getChatbotById, {
     chatbotId: chatbotId,
   });
+
+  const trackSession = useMutation(api.analytics.startChatSession);
+  const trackMessage = useMutation(api.analytics.trackMessage);
+  const addFeedback = useMutation(api.analytics.addMessageFeedback); // ✅ Add feedback mutation
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // ✅ CRITICAL FIX: Track if welcome message has been initialized
   const welcomeInitialized = useRef(false);
+  const sessionIdRef = useRef<string | null>(null);
 
   // Set welcome message ONLY ONCE
   useEffect(() => {
@@ -42,56 +47,186 @@ export default function EmbedChatWidget({
           content: chatbot.welcomeMessage || "Hi! How can I help you today?",
         },
       ]);
-      welcomeInitialized.current = true; // ✅ Mark as initialized
+      welcomeInitialized.current = true;
     }
   }, [chatbot]);
+
+  // Get geolocation with multiple fallbacks
+  useEffect(() => {
+    if (chatbot && !sessionIdRef.current) {
+      sessionIdRef.current = `session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+      const getGeolocation = async () => {
+        const apis = [
+          "https://ipapi.co/json/",
+          "https://ip-api.com/json/",
+          "https://freeipapi.com/api/json",
+        ];
+
+        for (const apiUrl of apis) {
+          try {
+            console.log(`🌍 Trying geolocation API: ${apiUrl}`);
+
+            const response = await fetch(apiUrl, {
+              signal: AbortSignal.timeout(5000),
+            });
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const data = await response.json();
+
+            let country = "Unknown";
+            let city = "Unknown";
+
+            if (data.country_name) {
+              country = data.country_name;
+              city = data.city || "Unknown";
+            } else if (data.country) {
+              country = data.country;
+              city = data.city || "Unknown";
+            } else if (data.countryName) {
+              country = data.countryName;
+              city = data.cityName || "Unknown";
+            }
+
+            if (country !== "Unknown") {
+              console.log(`✅ Geolocation found: ${city}, ${country}`);
+
+              await trackSession({
+                chatbotId: chatbot.chatbotId,
+                namespace: chatbot.namespace,
+                sessionId: sessionIdRef.current!,
+                userCountry: country,
+                userCity: city,
+              });
+
+              return;
+            }
+          } catch (error) {
+            console.warn(`❌ ${apiUrl} failed:`, error);
+            continue;
+          }
+        }
+
+        console.log("⚠️ All geolocation APIs failed, using Unknown");
+        await trackSession({
+          chatbotId: chatbot.chatbotId,
+          namespace: chatbot.namespace,
+          sessionId: sessionIdRef.current!,
+          userCountry: "Unknown",
+          userCity: "Unknown",
+        });
+      };
+
+      getGeolocation().catch((error) => {
+        console.error("Session tracking failed:", error);
+      });
+    }
+  }, [chatbot, trackSession]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading || !chatbot) return;
+  // ✅ Handle feedback click
+  const handleFeedback = async (
+    messageIndex: number,
+    feedbackType: "positive" | "negative",
+  ) => {
+    const message = messages[messageIndex];
 
-    // ✅ Save input value BEFORE clearing
+    // ✅ Better null check
+    if (!message.messageId || message.feedback !== null) {
+      console.log(
+        "Cannot add feedback: no messageId or feedback already given",
+      );
+      return;
+    }
+
+    try {
+      setMessages((prev) =>
+        prev.map((msg, idx) =>
+          idx === messageIndex ? { ...msg, feedback: feedbackType } : msg,
+        ),
+      );
+
+      await addFeedback({
+        messageId: message.messageId as any, // ✅ Safe because we checked above
+        feedback: feedbackType,
+      });
+
+      console.log(`✅ Feedback recorded: ${feedbackType}`);
+    } catch (error) {
+      console.error("Feedback error:", error);
+      setMessages((prev) =>
+        prev.map((msg, idx) =>
+          idx === messageIndex ? { ...msg, feedback: null } : msg,
+        ),
+      );
+    }
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading || !chatbot || !sessionIdRef.current) return;
+
     const currentInput = input.trim();
 
-    // ✅ Create user message with saved value
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: "user",
       content: currentInput,
     };
 
-    // ✅ Add to messages first
     setMessages((prev) => [...prev, userMessage]);
-
-    // ✅ Then clear input
     setInput("");
     setIsLoading(true);
 
+    const startTime = Date.now();
+
     try {
-      console.log("Sending message with chatbotId:", chatbotId);
-      console.log("Using namespace:", chatbot.namespace);
+      // Track user message
+      await trackMessage({
+        chatbotId: chatbot.chatbotId,
+        namespace: chatbot.namespace,
+        sessionId: sessionIdRef.current,
+        role: "user",
+        content: currentInput,
+      });
 
       const response = await fetch("/api/embed", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: currentInput, // ✅ Use saved value
+          message: currentInput,
           history: messages.slice(-5),
           chatbot: chatbot,
+          sessionId: sessionIdRef.current,
         }),
       });
 
       const data = await response.json();
 
+      const responseTime = Date.now() - startTime;
+
       if (data.success) {
+        // ✅ Track assistant message and get the message ID back
+        const messageId = await trackMessage({
+          chatbotId: chatbot.chatbotId,
+          namespace: chatbot.namespace,
+          sessionId: sessionIdRef.current,
+          role: "assistant",
+          content: data.answer,
+          responseTime,
+        });
+
         const assistantMessage: Message = {
           id: `assistant-${Date.now()}`,
           role: "assistant",
           content: data.answer,
+          messageId: messageId as string | null, // ✅ Now TypeScript is happy
+          feedback: null,
         };
+
         setMessages((prev) => [...prev, assistantMessage]);
       } else {
         throw new Error(data.error);
@@ -106,12 +241,22 @@ export default function EmbedChatWidget({
           "Sorry, something went wrong. Please try again.",
       };
       setMessages((prev) => [...prev, errorMessage]);
+
+      if (sessionIdRef.current) {
+        await trackMessage({
+          chatbotId: chatbot.chatbotId,
+          namespace: chatbot.namespace,
+          sessionId: sessionIdRef.current,
+          role: "assistant",
+          content: errorMessage.content,
+          responseTime: Date.now() - startTime,
+        }).catch(console.error);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Better keyboard handler
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -147,11 +292,14 @@ export default function EmbedChatWidget({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
-        {messages.map((msg) => (
+        {messages.map((msg, index) => (
           <div
             key={msg.id}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            className={`flex flex-col ${
+              msg.role === "user" ? "items-end" : "items-start"
+            }`}
           >
+            {/* Message Bubble */}
             <div
               className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm ${
                 msg.role === "user"
@@ -163,6 +311,52 @@ export default function EmbedChatWidget({
                 {msg.content}
               </p>
             </div>
+
+            {/* ✅ Feedback Buttons (only for assistant messages, not welcome) */}
+            {msg.role === "assistant" && msg.id !== "welcome" && (
+              <div className="flex items-center gap-2 mt-1.5 ml-2">
+                {msg.feedback === null ? (
+                  <>
+                    <button
+                      onClick={() => handleFeedback(index, "positive")}
+                      className="p-1.5 hover:bg-gray-200 rounded-full transition-colors group"
+                      title="Good response"
+                      aria-label="Thumbs up"
+                    >
+                      <FiThumbsUp
+                        className="text-gray-400 group-hover:text-green-600 transition-colors"
+                        size={14}
+                      />
+                    </button>
+                    <button
+                      onClick={() => handleFeedback(index, "negative")}
+                      className="p-1.5 hover:bg-gray-200 rounded-full transition-colors group"
+                      title="Bad response"
+                      aria-label="Thumbs down"
+                    >
+                      <FiThumbsDown
+                        className="text-gray-400 group-hover:text-red-600 transition-colors"
+                        size={14}
+                      />
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-xs text-gray-500 flex items-center gap-1.5 py-1">
+                    {msg.feedback === "positive" ? (
+                      <>
+                        <FiThumbsUp className="text-green-600" size={14} />
+                        <span>Thanks for your feedback!</span>
+                      </>
+                    ) : (
+                      <>
+                        <FiThumbsDown className="text-red-600" size={14} />
+                        <span>Thanks for your feedback!</span>
+                      </>
+                    )}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         ))}
         {isLoading && (

@@ -66,4 +66,36 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_chatbotId", ["chatbotId"])
     .index("by_namespace", ["namespace"]),
+
+  // Chat sessions
+  chat_sessions: defineTable({
+    chatbotId: v.string(),
+    namespace: v.string(),
+    sessionId: v.string(),
+    startTime: v.number(),
+    endTime: v.optional(v.number()),
+    messageCount: v.number(),
+    userCountry: v.optional(v.string()),
+    userCity: v.optional(v.string()),
+    userIP: v.optional(v.string()),
+  })
+    .index("by_chatbot", ["chatbotId"])
+    .index("by_chatbot_time", ["chatbotId", "startTime"])
+    .index("by_session", ["sessionId"]),
+
+  // Individual messages for logs
+  chat_messages: defineTable({
+    chatbotId: v.string(),
+    namespace: v.string(),
+    sessionId: v.string(),
+    role: v.union(v.literal("user"), v.literal("assistant")),
+    content: v.string(),
+    timestamp: v.number(),
+    responseTime: v.optional(v.number()), // ms to generate response
+    sources: v.optional(v.array(v.string())), // documents used
+    feedback: v.optional(v.union(v.literal("positive"), v.literal("negative"))),
+  })
+    .index("by_chatbot", ["chatbotId"])
+    .index("by_session", ["sessionId"])
+    .index("by_chatbot_time", ["chatbotId", "timestamp"]),
 });
