@@ -5,7 +5,8 @@ import { useUser } from "@clerk/nextjs";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
-import { FiCheck, FiLoader } from "react-icons/fi";
+import { FiCheck, FiLoader, FiCpu, FiGlobe, FiType } from "react-icons/fi";
+import { Zap } from "lucide-react";
 
 export default function CreateChatbotPage() {
   const { user } = useUser();
@@ -58,84 +59,108 @@ export default function CreateChatbotPage() {
   };
 
   return (
-    <div className="min-h-screen py-10 px-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="border-2 rounded-2xl shadow-xl p-8">
+    <div className="min-h-screen mt-15 flex items-center justify-center py-10 px-4 bg-background relative overflow-hidden">
+      {/* Background Decor */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
+
+      <div className="max-w-2xl w-full mx-auto relative z-10">
+        <div className="bg-card border border-border rounded-3xl shadow-2xl shadow-primary/5 p-8 md:p-10 animate-slide-up">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Create New Chatbot
+          <div className="mb-10 text-center">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-primary/10 text-primary mb-6 ring-1 ring-primary/20 shadow-lg shadow-primary/10">
+              <Zap className="h-8 w-8" />
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold mb-3 text-foreground tracking-tight">
+              Create New Agent
             </h1>
-            <p className="text-gray-600">
-              Set up your AI-powered chatbot in minutes
+            <p className="text-muted-foreground text-lg">
+              Give your new AI assistant an identity.
             </p>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleCreate} className="space-y-6">
+          <form onSubmit={handleCreate} className="space-y-8">
             {/* Chatbot Name */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Chatbot Name *
+            <div className="group">
+              <label className="block text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                <FiType className="text-primary" /> Chatbot Name{" "}
+                <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., Customer Support Bot"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g., Support Genius"
+                  className="w-full px-5 py-4 bg-muted/30 border border-input rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm group-hover:bg-muted/50"
+                  required
+                />
+              </div>
             </div>
 
             {/* Description */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Description (Optional)
+            <div className="group">
+              <label className="block text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                <FiCpu className="text-primary" /> Description{" "}
+                <span className="text-muted-foreground font-normal text-xs">
+                  (Optional)
+                </span>
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Brief description of your chatbot's purpose..."
+                placeholder="Briefly describe what this bot does..."
                 rows={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-5 py-4 bg-muted/30 border border-input rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm resize-none group-hover:bg-muted/50"
               />
             </div>
 
             {/* Website URL */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Website URL (Optional)
+            <div className="group">
+              <label className="block text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                <FiGlobe className="text-primary" /> Website URL{" "}
+                <span className="text-muted-foreground font-normal text-xs">
+                  (Optional)
+                </span>
               </label>
               <input
                 type="url"
                 value={websiteUrl}
                 onChange={(e) => setWebsiteUrl(e.target.value)}
                 placeholder="https://yourwebsite.com"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-5 py-4 bg-muted/30 border border-input rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm group-hover:bg-muted/50"
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Where you'll embed this chatbot
+              <p className="text-xs text-muted-foreground mt-2 ml-1">
+                This helps us customize the initial greeting.
               </p>
             </div>
 
             {/* Info Box */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
-                <FiCheck className="text-blue-600" />
-                What happens next?
+            <div className="bg-primary/5 border border-primary/10 rounded-xl p-5">
+              <h3 className="font-semibold text-primary mb-3 flex items-center gap-2">
+                <FiCheck className="h-5 w-5" />
+                Next Steps
               </h3>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Your chatbot will be created with a unique ID</li>
-                <li>• You can upload documents to train it</li>
-                <li>• Get embed code to add it to your website</li>
-                <li>• All infrastructure is managed for you</li>
+              <ul className="text-sm text-muted-foreground space-y-2 pl-1">
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                  Your bot will be assigned a unique ID.
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                  You'll be redirected to the Training Dashboard.
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                  Simply upload a PDF to start chatting instantly.
+                </li>
               </ul>
             </div>
 
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800 text-sm">
+              <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 flex items-center gap-3 text-destructive text-sm animate-shake">
+                <div className="w-2 h-2 rounded-full bg-destructive shrink-0" />
                 {error}
               </div>
             )}
@@ -144,17 +169,16 @@ export default function CreateChatbotPage() {
             <button
               type="submit"
               disabled={isCreating || !name.trim()}
-              className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-xl font-bold text-lg text-primary-foreground bg-primary hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/25 active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
             >
               {isCreating ? (
                 <>
-                  <FiLoader className="animate-spin" />
-                  Creating...
+                  <FiLoader className="animate-spin h-5 w-5" />
+                  Initializing Agent...
                 </>
               ) : (
                 <>
-                  <FiCheck />
-                  Create Chatbot
+                  Create Agent <FiCheck className="h-5 w-5" />
                 </>
               )}
             </button>

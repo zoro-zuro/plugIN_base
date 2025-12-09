@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect, use } from "react";
-import { FiSend, FiLoader, FiRefreshCw } from "react-icons/fi";
+import { FiSend, FiLoader, FiRefreshCw, FiCpu } from "react-icons/fi";
 import { generateResponse } from "@/app/actions/message";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Doc } from "@/convex/_generated/dataModel";
+import { Zap } from "lucide-react";
 
 type Message = {
   id: string;
@@ -44,7 +44,7 @@ export default function PlaygroundPage({
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       textareaRef.current.style.height =
-        textareaRef.current.scrollHeight + "px";
+        Math.min(textareaRef.current.scrollHeight, 200) + "px";
     }
   }, [input]);
 
@@ -53,6 +53,8 @@ export default function PlaygroundPage({
 
     const currentInput = input;
     setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = "52px";
+
     setIsLoading(true);
     const startTime = performance.now();
 
@@ -60,43 +62,23 @@ export default function PlaygroundPage({
       [];
 
     setMessages((prev) => {
-      console.log(
-        "🔵 CLIENT: prev.length BEFORE adding user message:",
-        prev.length,
-      );
-
       const userMessage: Message = {
         id: `user-${Date.now()}`,
         role: "user",
         content: currentInput,
         timestamp: new Date(),
       };
-
       const updated = [...prev, userMessage];
-
       historyForServer = updated.map((m) => ({
         role: m.role,
         content: m.content,
       }));
-
-      console.log(
-        "🔵 CLIENT: historyForServer.length:",
-        historyForServer.length,
-      );
-      console.log("🔵 CLIENT: historyForServer:", historyForServer);
-
       return updated;
     });
 
     try {
       const sessionId = `playground-${chatbotId}`;
 
-      console.log(
-        "🔵 CLIENT: About to call generateResponse with history length:",
-        historyForServer.length,
-      );
-
-      // ✅ Use chatbot namespace
       const response = await generateResponse(currentInput, {
         chatbot,
         sessionId,
@@ -107,51 +89,34 @@ export default function PlaygroundPage({
       const endTime = performance.now();
       const latency = endTime - startTime;
 
-      console.log("🟢 CLIENT: Response received, adding assistant message");
-
       if (!response.success) {
         throw new Error(response.error || "Failed to get response");
       }
 
-      if (response.memory && Array.isArray(response.memory)) {
-        const last = response.memory[response.memory.length - 1];
+      // Handle memory/history logic if present
+      const answerContent =
+        response.memory && response.memory.length > 0
+          ? response.memory[response.memory.length - 1]?.content ||
+            response.answer ||
+            ""
+          : response.answer || "";
 
-        const assistantMessage: Message = {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          content: last?.content || response.answer || "",
-          timestamp: new Date(),
-          latencyMs: latency,
-        };
+      const assistantMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: answerContent,
+        timestamp: new Date(),
+        latencyMs: latency,
+      };
 
-        setMessages((prev) => {
-          console.log(
-            "🔵 CLIENT: prev.length BEFORE adding assistant:",
-            prev.length,
-          );
-          const result = [...prev, assistantMessage];
-          console.log(
-            "🔵 CLIENT: messages.length AFTER adding assistant:",
-            result.length,
-          );
-          return result;
-        });
-      } else {
-        const assistantMessage: Message = {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          content: response.answer || "",
-          timestamp: new Date(),
-          latencyMs: latency,
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-      }
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       console.error("=== FRONTEND: Chat error ===", error);
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         role: "assistant",
-        content: "Sorry, something went wrong. Please try again.",
+        content:
+          "Sorry, something went wrong. Please check your connection and try again.",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -169,100 +134,153 @@ export default function PlaygroundPage({
   };
 
   const handleReset = () => {
-    console.log("=== FRONTEND: Resetting conversation ===");
     setMessages([]);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
   };
 
   if (!chatbot) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <p className="text-gray-500">Loading chatbot...</p>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4 animate-pulse">
+          <div className="h-12 w-12 bg-primary/20 rounded-xl" />
+          <p className="text-muted-foreground font-medium">
+            Connecting to Agent...
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background relative">
       {/* Top Bar with Chatbot Info */}
-      <div className="h-16 border-b border-border bg-card flex items-center justify-between px-6">
+      <div className="h-16 border-b border-border bg-card/80 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold">{chatbot.name}</h2>
-          <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded">
-            {chatbot.chatbotId}
-          </span>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-fuchsia-600 flex items-center justify-center text-white shadow-sm">
+            <Zap size={16} className="fill-current" />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-foreground">
+              {chatbot.name}
+            </h2>
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs text-muted-foreground font-medium">
+                Test Mode
+              </span>
+            </div>
+          </div>
         </div>
+
         <button
           onClick={handleReset}
-          className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+          className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all border border-transparent hover:border-border"
+          title="Clear conversation"
         >
-          <FiRefreshCw size={16} />
-          Reset
+          <FiRefreshCw size={14} />
+          Reset Chat
         </button>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto bg-black">
-        <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="flex-1 overflow-y-auto scroll-smooth">
+        <div className="max-w-3xl mx-auto px-4 py-8">
+          {/* Welcome State */}
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="bg-white/10 px-6 py-4 rounded-2xl mb-6">
-                <p className="text-white text-sm">
-                  Hi! What can I help you with?
-                </p>
-                <p className="text-white/60 text-xs mt-2">
-                  Chatbot: {chatbot.name}
-                </p>
-                {chatbot.description && (
-                  <p className="text-white/40 text-xs mt-1">
-                    {chatbot.description}
-                  </p>
-                )}
+            <div className="flex flex-col items-center justify-center mt-20 text-center animate-slide-up">
+              <div className="w-20 h-20 bg-primary/5 rounded-3xl flex items-center justify-center mb-6 ring-1 ring-primary/20">
+                <FiCpu className="text-4xl text-primary" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground mb-2">
+                Testing <span className="text-primary">{chatbot.name}</span>
+              </h3>
+              <p className="text-muted-foreground max-w-sm mx-auto text-sm leading-relaxed mb-8">
+                {chatbot.description ||
+                  "Start chatting to test your agent's responses and accuracy."}
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
+                {[
+                  "What is this document about?",
+                  "Summarize the key points",
+                  "Who is the author?",
+                  "Explain like I'm 5",
+                ].map((suggestion, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setInput(suggestion);
+                      if (textareaRef.current) textareaRef.current.focus();
+                    }}
+                    className="text-xs text-muted-foreground bg-card border border-border hover:border-primary/50 hover:text-primary px-4 py-3 rounded-xl transition-all text-left"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
               </div>
             </div>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-6">
             {messages.map((message) => (
               <MessageBubble key={message.id} message={message} />
             ))}
 
             {isLoading && (
-              <div className="flex items-start gap-3">
-                <div className="bg-white/10 px-4 py-3 rounded-2xl rounded-tl-sm">
-                  <FiLoader className="animate-spin text-white" size={16} />
+              <div className="flex items-start gap-3 animate-fade-in">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Zap size={14} className="text-primary fill-current" />
+                </div>
+                <div className="bg-muted/50 px-4 py-3 rounded-2xl rounded-tl-none">
+                  <div className="flex gap-1.5">
+                    <span
+                      className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce"
+                      style={{ animationDelay: "0ms" }}
+                    />
+                    <span
+                      className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce"
+                      style={{ animationDelay: "150ms" }}
+                    />
+                    <span
+                      className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce"
+                      style={{ animationDelay: "300ms" }}
+                    />
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} className="h-4" />
         </div>
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-border bg-black">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex gap-3 items-end">
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type your message..."
-              className="flex-1 resize-none rounded-xl border border-input bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              rows={1}
-              style={{ minHeight: "52px", maxHeight: "200px" }}
-            />
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || isLoading}
-              className="px-5 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              style={{ height: "52px" }}
-            >
-              <FiSend size={18} />
-            </button>
-          </div>
+      <div className="border-t border-border bg-background/80 backdrop-blur-md p-4 sticky bottom-0 z-20">
+        <div className="max-w-3xl mx-auto relative">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyPress}
+            placeholder={`Message ${chatbot.name}...`}
+            className="w-full resize-none rounded-2xl border border-input bg-muted/30 px-5 py-4 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm placeholder:text-muted-foreground"
+            rows={1}
+            style={{ minHeight: "56px", maxHeight: "200px" }}
+          />
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || isLoading}
+            className="absolute right-2 bottom-2 p-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-md shadow-primary/20"
+          >
+            <FiSend size={16} className={isLoading ? "animate-pulse" : ""} />
+          </button>
         </div>
+        <p className="text-[10px] text-center text-muted-foreground mt-3">
+          AI responses can be inaccurate. Check important info.
+        </p>
       </div>
     </div>
   );
@@ -272,30 +290,54 @@ function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
 
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+    <div
+      className={`flex w-full ${isUser ? "justify-end" : "justify-start"} animate-slide-up`}
+    >
       <div
-        className={`max-w-[80%] px-4 py-3 rounded-2xl ${
-          isUser
-            ? "bg-purple-600 text-white rounded-tr-sm"
-            : "bg-white/10 text-white rounded-tl-sm"
-        }`}
+        className={`flex max-w-[85%] md:max-w-[75%] gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
       >
-        <div className="text-xs font-semibold mb-1">
-          {isUser ? "You" : "Agent"}{" "}
-          {message.timestamp.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </div>
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">
-          {message.content}
-          <br />
-          {!isUser && message.latencyMs != null && (
-            <span className="mt-2 text-[10px] opacity-70 bg-white/10 px-1 rounded">
-              {convertTOSeconds(message.latencyMs)} seconds
-            </span>
+        {/* Avatar */}
+        <div
+          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isUser ? "bg-muted text-foreground" : "bg-primary/10 text-primary"}`}
+        >
+          {isUser ? (
+            <div className="text-xs font-bold">YOU</div>
+          ) : (
+            <Zap size={14} className="fill-current" />
           )}
-        </p>
+        </div>
+
+        {/* Bubble */}
+        <div
+          className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
+        >
+          <div
+            className={`px-5 py-3.5 rounded-2xl shadow-sm text-sm leading-relaxed whitespace-pre-wrap ${
+              isUser
+                ? "bg-primary text-primary-foreground rounded-tr-sm"
+                : "bg-card border border-border text-foreground rounded-tl-sm"
+            }`}
+          >
+            {message.content}
+          </div>
+
+          {/* Metadata */}
+          <div
+            className={`flex items-center gap-2 mt-1.5 px-1 ${isUser ? "flex-row-reverse" : "flex-row"}`}
+          >
+            <span className="text-[10px] text-muted-foreground font-medium opacity-70">
+              {message.timestamp.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+            {!isUser && message.latencyMs != null && (
+              <span className="text-[10px] text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded font-mono">
+                {convertTOSeconds(message.latencyMs)}s
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

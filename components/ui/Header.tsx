@@ -9,7 +9,7 @@ import {
   MobileNavToggle,
   MobileNavMenu,
 } from "@/components/ui/resizable-navbar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useUser,
   SignInButton,
@@ -27,74 +27,87 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
+  // const [scrolled, setScrolled] = useState(false);
 
-  // ✅ Hide header on specific routes
+  // Handle scroll effect for glassmorphism
+  // useEffect(() => {
+  //   const handleScroll = () => setScrolled(window.scrollY > 20);
+  //   window.addEventListener("scroll", handleScroll);
+  //   return () => window.removeEventListener("scroll", handleScroll);
+  // }, []);
+
+  // Hide header on specific routes
   const shouldHideHeader =
-    pathname?.startsWith("/dashboard") || // ✅ All dashboard routes
-    pathname?.startsWith("/chatbots/bot_") || // Chatbot-specific pages
-    pathname?.startsWith("/embed/"); // Embed widget
-  // Eval page
+    pathname?.startsWith("/dashboard") ||
+    pathname?.startsWith("/chatbots/bot_") ||
+    pathname?.startsWith("/embed/");
 
-  // Different nav items based on auth state
   const publicNavItems = [
     { name: "Features", link: "#features" },
+    { name: "How it Works", link: "#how-it-works" },
     { name: "Pricing", link: "#pricing" },
-    { name: "Contact", link: "#contact" },
   ];
 
   const authenticatedNavItems = [
     { name: "My Chatbots", link: "/chatbot/manage" },
     { name: "Create Chatbot", link: "/chatbot/create" },
     { name: "Playground", link: "/dashboard/playground" },
-    { name: "Upload Docs", link: "/dashboard/upload" },
   ];
 
   const navItems = isSignedIn ? authenticatedNavItems : publicNavItems;
 
-  // ✅ Return null to hide header
   if (shouldHideHeader) {
     return null;
   }
 
   return (
-    <div className="relative w-full">
-      <Navbar>
+    <div
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300`}
+    >
+      <Navbar className="!bg-transparent !border-none">
         {/* Desktop Navigation */}
-        <NavBody className="flex justify-between items-center hidden md:flex">
-          {/* Left: PlugIN logo/text */}
+        <NavBody className="flex justify-between items-center hidden md:flex max-w-7xl mx-auto px-6 h-16">
+          {/* Left: PlugIN logo */}
           <Link
-            href={isSignedIn ? "/chatbots/manage" : "/"}
-            className="flex items-center gap-2"
+            href={isSignedIn ? "/chatbot/manage" : "/"}
+            className="flex items-center gap-2 group"
           >
-            <span className="font-bold text-lg">PlugIN</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white font-bold shadow-lg shadow-violet-500/20 group-hover:shadow-violet-500/40 transition-all">
+              P
+            </div>
+            <span className="font-bold text-lg tracking-tight text-foreground group-hover:text-primary transition-colors">
+              PlugIN
+            </span>
           </Link>
 
           {/* Center: Navigation Items */}
           <div className="flex-1 flex justify-center">
-            <NavItems items={navItems} />
+            <NavItems
+              items={navItems}
+              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+            />
           </div>
 
-          {/* Right: Theme toggle and Clerk Login/Logout */}
+          {/* Right: Actions */}
           <div className="flex items-center gap-4">
             <Button
               aria-label="Toggle dark mode"
               variant="ghost"
               onClick={toggleTheme}
-              className="p-4 px-3 rounded-full z-[99]"
+              className="p-3.5 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors z-[99]"
             >
-              {theme === "dark" ? <FiSun size={20} /> : <FiMoon size={20} />}
+              {theme === "dark" ? <FiSun size={18} /> : <FiMoon size={18} />}
             </Button>
 
             {!isSignedIn ? (
-              <SignInButton>
-                <NavbarButton variant="primary">Login</NavbarButton>
+              <SignInButton mode="modal">
+                <button className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-violet-500/25">
+                  Login
+                </button>
               </SignInButton>
             ) : (
               <div className="flex items-center gap-3">
                 <UserButton afterSignOutUrl="/" />
-                <SignOutButton>
-                  <NavbarButton variant="primary">Logout</NavbarButton>
-                </SignOutButton>
               </div>
             )}
           </div>
@@ -102,11 +115,11 @@ export function Header() {
 
         {/* Mobile Navigation */}
         <MobileNav className="flex md:hidden">
-          <MobileNavHeader>
-            <Link
-              href={isSignedIn ? "/chatbots/manage" : "/"}
-              className="flex items-center gap-2"
-            >
+          <MobileNavHeader className="px-4 py-3">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white font-bold">
+                P
+              </div>
               <span className="font-bold text-lg">PlugIN</span>
             </Link>
             <MobileNavToggle
@@ -118,55 +131,41 @@ export function Header() {
           <MobileNavMenu
             isOpen={isMobileMenuOpen}
             onClose={() => setIsMobileMenuOpen(false)}
+            className="bg-background/95 backdrop-blur-xl border-t border-border"
           >
             {navItems.map((item, idx) => (
               <Link
                 key={`mobile-link-${idx}`}
                 href={item.link}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="relative text-neutral-600 dark:text-neutral-300 py-2"
+                className="block py-3 px-4 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-lg mx-2 my-1"
               >
-                <span className="block">{item.name}</span>
+                {item.name}
               </Link>
             ))}
 
-            <button
-              aria-label="Toggle dark mode"
-              onClick={() => {
-                toggleTheme();
-                setIsMobileMenuOpen(false);
-              }}
-              className="p-2 rounded hover:bg-slate-200 dark:hover:bg-slate-700 mb-4 w-full text-left"
-            >
-              {theme === "dark" ? (
-                <span className="flex items-center gap-2">
-                  <FiSun size={20} /> Light Mode
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <FiMoon size={20} /> Dark Mode
-                </span>
-              )}
-            </button>
+            <div className="p-4 border-t border-border mt-2">
+              <button
+                onClick={() => {
+                  toggleTheme();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-accent text-sm font-medium"
+              >
+                {theme === "dark" ? <FiSun size={18} /> : <FiMoon size={18} />}
+                <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+              </button>
 
-            {!isSignedIn ? (
-              <SignInButton>
-                <NavbarButton variant="primary" className="w-full">
-                  Login
-                </NavbarButton>
-              </SignInButton>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex justify-center">
-                  <UserButton afterSignOutUrl="/" />
+              {!isSignedIn && (
+                <div className="mt-4">
+                  <SignInButton>
+                    <button className="w-full rounded-full bg-primary py-2.5 text-sm font-medium text-white shadow-lg shadow-violet-500/20">
+                      Sign In
+                    </button>
+                  </SignInButton>
                 </div>
-                <SignOutButton>
-                  <NavbarButton variant="primary" className="w-full">
-                    Logout
-                  </NavbarButton>
-                </SignOutButton>
-              </div>
-            )}
+              )}
+            </div>
           </MobileNavMenu>
         </MobileNav>
       </Navbar>

@@ -13,6 +13,8 @@ import {
   FiFilter,
   FiChevronDown,
   FiChevronUp,
+  FiCalendar,
+  FiBarChart2,
 } from "react-icons/fi";
 import {
   AreaChart,
@@ -22,6 +24,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  BarChart,
+  Bar,
 } from "recharts";
 
 type Tab = "chats" | "logs";
@@ -32,30 +36,31 @@ function StatCard({
   icon: Icon,
   label,
   value,
-  color,
+  variant = "primary",
 }: {
   icon: any;
   label: string;
   value: number;
-  color: string;
+  variant?: "primary" | "secondary" | "accent" | "destructive";
 }) {
-  const colorClasses = {
-    blue: "bg-blue-50 dark:bg-blue-900/20 text-blue-600",
-    purple: "bg-purple-50 dark:bg-purple-900/20 text-purple-600",
-    green: "bg-green-50 dark:bg-green-900/20 text-green-600",
-    red: "bg-red-50 dark:bg-red-900/20 text-red-600",
+  const variants = {
+    primary: "bg-primary/10 text-primary ring-primary/20",
+    secondary: "bg-secondary text-secondary-foreground ring-border",
+    accent:
+      "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20",
+    destructive: "bg-destructive/10 text-destructive ring-destructive/20",
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
+    <div className="bg-card border border-border rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
       <div
-        className={`inline-flex p-3 rounded-lg ${colorClasses[color as keyof typeof colorClasses]} mb-4`}
+        className={`inline-flex p-3 rounded-xl ring-1 ${variants[variant]} mb-4`}
       >
-        <Icon className="text-2xl" />
+        <Icon className="text-xl" />
       </div>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{label}</p>
-      <p className="text-3xl font-bold text-gray-900 dark:text-white">
-        {value}
+      <p className="text-sm font-medium text-muted-foreground mb-1">{label}</p>
+      <p className="text-3xl font-bold text-foreground tracking-tight">
+        {value.toLocaleString()}
       </p>
     </div>
   );
@@ -73,8 +78,6 @@ function SessionGroup({
   isExpanded: boolean;
   onToggle: () => void;
 }) {
-  const userMessages = messages.filter((m) => m.role === "user").length;
-  const aiMessages = messages.filter((m) => m.role === "assistant").length;
   const startTime = messages[0]?.timestamp;
   const positiveCount = messages.filter(
     (m) => m.feedback === "positive",
@@ -84,39 +87,55 @@ function SessionGroup({
   ).length;
 
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-4">
+    <div className="bg-card border border-border rounded-xl overflow-hidden mb-4 transition-all duration-300 hover:border-primary/30">
       {/* Session Header */}
       <button
         onClick={onToggle}
-        className="w-full bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 px-6 py-4 flex items-center justify-between transition-colors"
+        className="w-full px-6 py-4 flex items-center justify-between hover:bg-muted/30 transition-colors"
       >
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+          <div
+            className={`p-2 rounded-lg transition-colors ${isExpanded ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}
+          >
             {isExpanded ? <FiChevronUp /> : <FiChevronDown />}
-            <span className="font-medium text-gray-900 dark:text-white">
+          </div>
+          <div className="text-left">
+            <div className="font-semibold text-foreground flex items-center gap-2">
               Session {sessionId.slice(-8)}
-            </span>
+              {negativeCount > 0 && (
+                <span className="w-2 h-2 rounded-full bg-destructive" />
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground font-mono">
+              {sessionId}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="hidden md:flex items-center gap-2 bg-muted/50 px-3 py-1 rounded-lg">
+            <FiClock size={14} />
+            <span>{new Date(startTime).toLocaleString()}</span>
           </div>
 
-          <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-            <span>{new Date(startTime).toLocaleString()}</span>
-            <span>•</span>
-            <span>{messages.length} messages</span>
-            {positiveCount > 0 && (
-              <>
-                <span>•</span>
-                <span className="flex items-center gap-1 text-green-600">
-                  <FiThumbsUp size={14} /> {positiveCount}
-                </span>
-              </>
-            )}
-            {negativeCount > 0 && (
-              <>
-                <span>•</span>
-                <span className="flex items-center gap-1 text-red-600">
-                  <FiThumbsDown size={14} /> {negativeCount}
-                </span>
-              </>
+          <div className="flex items-center gap-3">
+            <span className="font-medium text-foreground">
+              {messages.length} msgs
+            </span>
+
+            {(positiveCount > 0 || negativeCount > 0) && (
+              <div className="flex items-center gap-2 border-l border-border pl-3">
+                {positiveCount > 0 && (
+                  <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-bold bg-emerald-500/10 px-2 py-1 rounded">
+                    <FiThumbsUp size={12} /> {positiveCount}
+                  </span>
+                )}
+                {negativeCount > 0 && (
+                  <span className="flex items-center gap-1 text-destructive text-xs font-bold bg-destructive/10 px-2 py-1 rounded">
+                    <FiThumbsDown size={12} /> {negativeCount}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -124,70 +143,76 @@ function SessionGroup({
 
       {/* Session Messages */}
       {isExpanded && (
-        <div className="bg-white dark:bg-gray-800">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Time
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Message
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Response Time
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Feedback
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {messages.map((msg, idx) => (
-                <tr
-                  key={idx}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {new Date(msg.timestamp).toLocaleTimeString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        msg.role === "user"
-                          ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                          : "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-                      }`}
-                    >
-                      {msg.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-md">
-                    <div className="line-clamp-2">{msg.content}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {msg.responseTime ? `${msg.responseTime}ms` : "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {msg.feedback === "positive" && (
-                      <span className="flex items-center gap-1 text-green-600">
-                        <FiThumbsUp size={16} /> Positive
-                      </span>
-                    )}
-                    {msg.feedback === "negative" && (
-                      <span className="flex items-center gap-1 text-red-600">
-                        <FiThumbsDown size={16} /> Negative
-                      </span>
-                    )}
-                    {!msg.feedback && <span className="text-gray-400">-</span>}
-                  </td>
+        <div className="border-t border-border bg-muted/5">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-muted/50 text-xs uppercase text-muted-foreground font-semibold">
+                <tr>
+                  <th className="px-6 py-3">Time</th>
+                  <th className="px-6 py-3">Role</th>
+                  <th className="px-6 py-3 w-1/2">Message</th>
+                  <th className="px-6 py-3">Latency</th>
+                  <th className="px-6 py-3">Feedback</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {messages.map((msg, idx) => (
+                  <tr
+                    key={idx}
+                    className="hover:bg-muted/30 transition-colors group"
+                  >
+                    <td className="px-6 py-4 text-sm text-muted-foreground whitespace-nowrap font-mono">
+                      {new Date(msg.timestamp).toLocaleTimeString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2.5 py-1 text-xs font-bold rounded-md uppercase tracking-wide ${
+                          msg.role === "user"
+                            ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                            : "bg-primary/10 text-primary"
+                        }`}
+                      >
+                        {msg.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-foreground max-w-lg">
+                      <div className="line-clamp-2 group-hover:line-clamp-none transition-all">
+                        {msg.content}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground font-mono">
+                      {msg.responseTime ? (
+                        <span
+                          className={`${msg.responseTime > 2000 ? "text-orange-500" : "text-emerald-600"}`}
+                        >
+                          {msg.responseTime}ms
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {msg.feedback === "positive" && (
+                        <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+                          <FiThumbsUp size={14} className="fill-current/20" />{" "}
+                          Positive
+                        </span>
+                      )}
+                      {msg.feedback === "negative" && (
+                        <span className="inline-flex items-center gap-1.5 text-destructive font-medium">
+                          <FiThumbsDown size={14} className="fill-current/20" />{" "}
+                          Negative
+                        </span>
+                      )}
+                      {!msg.feedback && (
+                        <span className="text-muted-foreground/30">-</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
@@ -243,7 +268,6 @@ export default function ActivityPage({
   const groupedLogs = useMemo(() => {
     if (!logs) return null;
 
-    // 1️⃣ FILTER BY DATE
     const now = Date.now();
     const dateRanges = {
       today: now - 24 * 60 * 60 * 1000,
@@ -256,7 +280,6 @@ export default function ActivityPage({
       (msg) => msg.timestamp >= dateRanges[logDateFilter],
     );
 
-    // 2️⃣ FILTER BY FEEDBACK
     if (feedbackFilter !== "all") {
       filtered = filtered.filter((msg) => {
         if (feedbackFilter === "positive") return msg.feedback === "positive";
@@ -266,7 +289,6 @@ export default function ActivityPage({
       });
     }
 
-    // 3️⃣ FILTER BY SEARCH
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((msg) =>
@@ -274,7 +296,6 @@ export default function ActivityPage({
       );
     }
 
-    // 4️⃣ GROUP BY SESSION ID
     const grouped = filtered.reduce(
       (acc, msg) => {
         if (!acc[msg.sessionId]) {
@@ -286,31 +307,24 @@ export default function ActivityPage({
       {} as Record<string, any[]>,
     );
 
-    // 5️⃣ SORT MESSAGES IN EACH SESSION BY TIMESTAMP
     Object.keys(grouped).forEach((sessionId) => {
       grouped[sessionId].sort((a, b) => a.timestamp - b.timestamp);
     });
 
-    // 6️⃣ CONVERT TO ARRAY AND SORT SESSIONS BY MOST RECENT
-    const sessions = Object.entries(grouped)
+    return Object.entries(grouped)
       .map(([sessionId, messages]) => ({
         sessionId,
         messages,
         startTime: messages[0].timestamp,
       }))
       .sort((a, b) => b.startTime - a.startTime);
-
-    return sessions;
   }, [logs, logDateFilter, feedbackFilter, searchQuery]);
 
   const toggleSession = (sessionId: string) => {
     setExpandedSessions((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(sessionId)) {
-        newSet.delete(sessionId);
-      } else {
-        newSet.add(sessionId);
-      }
+      if (newSet.has(sessionId)) newSet.delete(sessionId);
+      else newSet.add(sessionId);
       return newSet;
     });
   };
@@ -321,228 +335,268 @@ export default function ActivityPage({
     }
   };
 
-  const collapseAll = () => {
-    setExpandedSessions(new Set());
-  };
+  const collapseAll = () => setExpandedSessions(new Set());
 
   if (!chatbot) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading chatbot...</p>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4 animate-pulse">
+          <div className="h-12 w-12 rounded-xl bg-primary/20" />
+          <p className="text-muted-foreground font-medium">
+            Loading activity data...
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+    <div className="py-8 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2 tracking-tight">
             Activity
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Monitor conversations and message logs
+          <p className="text-muted-foreground">
+            Analyze conversation metrics and debug session logs.
           </p>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700">
-          <button
-            onClick={() => setActiveTab("chats")}
-            className={`pb-3 px-4 font-medium transition-all ${
-              activeTab === "chats"
-                ? "text-indigo-600 border-b-2 border-indigo-600"
-                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <FiMessageSquare />
-              Chats
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveTab("logs")}
-            className={`pb-3 px-4 font-medium transition-all ${
-              activeTab === "logs"
-                ? "text-indigo-600 border-b-2 border-indigo-600"
-                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <FiList />
-              Logs
-            </div>
-          </button>
+        {/* Tab Switcher */}
+        <div className="bg-muted p-1 rounded-xl inline-flex">
+          {["chats", "logs"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab as Tab)}
+              className={`px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === tab
+                  ? "bg-card text-foreground shadow-sm ring-1 ring-border"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <span className="flex items-center gap-2 capitalize">
+                {tab === "chats" ? <FiBarChart2 /> : <FiList />}
+                {tab}
+              </span>
+            </button>
+          ))}
         </div>
+      </div>
 
-        {/* Chats Tab */}
-        {activeTab === "chats" && (
-          <div className="space-y-6">
-            {/* Time Range Selector */}
-            <div className="flex gap-2">
+      {/* CHATS TAB (Analytics) */}
+      {activeTab === "chats" && (
+        <div className="space-y-8 animate-slide-up">
+          {/* Time Range Filter */}
+          <div className="flex justify-end">
+            <div className="inline-flex bg-card border border-border rounded-lg p-1 shadow-sm">
               {(["today", "week", "month"] as const).map((range) => (
                 <button
                   key={range}
                   onClick={() => setTimeRange(range)}
-                  className={`px-4 py-2 rounded-lg font-medium capitalize transition-all ${
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     timeRange === range
-                      ? "bg-indigo-600 text-white"
-                      : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted"
                   }`}
                 >
                   {range === "today"
-                    ? "Today"
+                    ? "24h"
                     : range === "week"
-                      ? "Last 7 Days"
-                      : "Last 30 Days"}
+                      ? "7 Days"
+                      : "30 Days"}
                 </button>
               ))}
             </div>
+          </div>
 
-            {!analytics ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Loading analytics...
-                </p>
+          {!analytics ? (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-pulse">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="h-32 bg-card rounded-2xl border border-border"
+                />
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* Stat Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard
+                  icon={FiMessageSquare}
+                  label="Total Chats"
+                  value={analytics.totalChats}
+                  variant="primary"
+                />
+                <StatCard
+                  icon={FiList}
+                  label="Total Messages"
+                  value={analytics.totalMessages}
+                  variant="secondary"
+                />
+                <StatCard
+                  icon={FiClock}
+                  label="Avg. Messages / Chat"
+                  value={Math.round(analytics.avgMessages * 10) / 10}
+                  variant="accent"
+                />
+                <StatCard
+                  icon={FiThumbsDown}
+                  label="Negative Feedback"
+                  value={analytics.thumbsDown}
+                  variant="destructive"
+                />
               </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <StatCard
-                    icon={FiMessageSquare}
-                    label="Total chats"
-                    value={analytics.totalChats}
-                    color="blue"
-                  />
-                  <StatCard
-                    icon={FiMessageSquare}
-                    label="Total messages"
-                    value={analytics.totalMessages}
-                    color="purple"
-                  />
-                  <StatCard
-                    icon={FiClock}
-                    label="Average messages"
-                    value={analytics.avgMessages}
-                    color="green"
-                  />
-                  <StatCard
-                    icon={FiThumbsDown}
-                    label="Messages with thumbs down"
-                    value={analytics.thumbsDown}
-                    color="red"
-                  />
-                </div>
 
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                    Chats by Hour
+              {/* Chart Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Main Area Chart */}
+                <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-6 shadow-sm">
+                  <h3 className="text-lg font-bold text-foreground mb-6 flex items-center gap-2">
+                    <FiBarChart2 className="text-primary" /> Volume Trends
                   </h3>
-                  {analytics.hourlyChats && analytics.hourlyChats.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <AreaChart data={analytics.hourlyChats}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                        <XAxis
-                          dataKey="hour"
-                          stroke="#9CA3AF"
-                          style={{ fontSize: "12px" }}
-                        />
-                        <YAxis stroke="#9CA3AF" style={{ fontSize: "12px" }} />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "#1F2937",
-                            border: "none",
-                            borderRadius: "8px",
-                            color: "#fff",
-                          }}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="count"
-                          stroke="#8B5CF6"
-                          fill="#8B5CF6"
-                          fillOpacity={0.6}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                  {analytics.hourlyChats?.length > 0 ? (
+                    <div className="h-[350px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={analytics.hourlyChats}>
+                          <defs>
+                            <linearGradient
+                              id="colorChats"
+                              x1="0"
+                              y1="0"
+                              x2="0"
+                              y2="1"
+                            >
+                              <stop
+                                offset="5%"
+                                stopColor="hsl(var(--primary))"
+                                stopOpacity={0.3}
+                              />
+                              <stop
+                                offset="95%"
+                                stopColor="hsl(var(--primary))"
+                                stopOpacity={0}
+                              />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="hsl(var(--border))"
+                            vertical={false}
+                          />
+                          <XAxis
+                            dataKey="hour"
+                            stroke="hsl(var(--muted-foreground))"
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                            dy={10}
+                          />
+                          <YAxis
+                            stroke="hsl(var(--muted-foreground))"
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                            dx={-10}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "hsl(var(--card))",
+                              borderColor: "hsl(var(--border))",
+                              borderRadius: "12px",
+                              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                              color: "hsl(var(--foreground))",
+                            }}
+                            cursor={{
+                              stroke: "hsl(var(--primary))",
+                              strokeWidth: 1,
+                            }}
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="count"
+                            stroke="hsl(var(--primary))"
+                            strokeWidth={3}
+                            fill="url(#colorChats)"
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
                   ) : (
-                    <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-                      No hourly data available yet
-                    </p>
+                    <div className="h-[350px] flex flex-col items-center justify-center text-muted-foreground bg-muted/10 rounded-xl">
+                      <FiBarChart2 size={40} className="mb-4 opacity-20" />
+                      <p>No traffic data for this period</p>
+                    </div>
                   )}
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                    Chats by Country
+                {/* Country List */}
+                <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+                  <h3 className="text-lg font-bold text-foreground mb-6">
+                    Top Locations
                   </h3>
-                  {analytics.chatsByCountry &&
-                  analytics.chatsByCountry.length > 0 ? (
-                    <div className="space-y-3">
-                      {analytics.chatsByCountry.slice(0, 10).map((item) => (
-                        <div
-                          key={item.country}
-                          className="flex items-center justify-between"
-                        >
-                          <span className="text-gray-700 dark:text-gray-300">
-                            {item.country}
-                          </span>
-                          <div className="flex items-center gap-3">
-                            <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                              <div
-                                className="bg-indigo-600 h-2 rounded-full"
-                                style={{
-                                  width: `${analytics.totalChats > 0 ? (item.count / analytics.totalChats) * 100 : 0}%`,
-                                }}
-                              />
-                            </div>
-                            <span className="text-sm font-medium text-gray-900 dark:text-white w-8 text-right">
+                  {analytics.chatsByCountry?.length > 0 ? (
+                    <div className="space-y-5">
+                      {analytics.chatsByCountry.slice(0, 8).map((item) => (
+                        <div key={item.country} className="group">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-foreground flex items-center gap-2">
+                              <span className="text-lg">🌍</span> {item.country}
+                            </span>
+                            <span className="text-sm font-bold text-muted-foreground group-hover:text-primary transition-colors">
                               {item.count}
                             </span>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                            <div
+                              className="bg-gradient-to-r from-primary to-fuchsia-500 h-2 rounded-full transition-all duration-1000 ease-out"
+                              style={{
+                                width: `${analytics.totalChats > 0 ? (item.count / analytics.totalChats) * 100 : 0}%`,
+                              }}
+                            />
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-                      No geographic data available yet
-                    </p>
+                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-50">
+                      <p>No location data</p>
+                    </div>
                   )}
                 </div>
-              </>
-            )}
-          </div>
-        )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
-        {/* ✅ LOGS TAB WITH SESSION GROUPING */}
-        {activeTab === "logs" && (
-          <div className="space-y-4">
-            {/* Filters */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search messages..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    />
-                  </div>
-                </div>
+      {/* LOGS TAB (Session Debugging) */}
+      {activeTab === "logs" && (
+        <div className="space-y-6 animate-slide-up">
+          {/* Filters Bar */}
+          <div className="bg-card border border-border rounded-2xl p-5 shadow-sm sticky top-4 z-20">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+              {/* Search */}
+              <div className="md:col-span-5 relative">
+                <FiSearch className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search message content..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-muted/30 border border-input rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                />
+              </div>
 
-                <div>
+              {/* Date Filter */}
+              <div className="md:col-span-3">
+                <div className="relative">
+                  <FiCalendar className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground pointer-events-none" />
                   <select
                     value={logDateFilter}
                     onChange={(e) => setLogDateFilter(e.target.value as any)}
-                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full pl-10 pr-4 py-2.5 appearance-none bg-muted/30 border border-input rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer hover:bg-muted/50 transition-colors"
                   >
                     <option value="today">Today</option>
                     <option value="week">Last 7 Days</option>
@@ -550,14 +604,18 @@ export default function ActivityPage({
                     <option value="all">All Time</option>
                   </select>
                 </div>
+              </div>
 
-                <div>
+              {/* Feedback Filter */}
+              <div className="md:col-span-4">
+                <div className="relative">
+                  <FiFilter className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground pointer-events-none" />
                   <select
                     value={feedbackFilter}
                     onChange={(e) =>
                       setFeedbackFilter(e.target.value as FeedbackFilter)
                     }
-                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full pl-10 pr-4 py-2.5 appearance-none bg-muted/30 border border-input rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer hover:bg-muted/50 transition-colors"
                   >
                     <option value="all">All Feedback</option>
                     <option value="positive">👍 Positive Only</option>
@@ -566,65 +624,67 @@ export default function ActivityPage({
                   </select>
                 </div>
               </div>
-
-              {groupedLogs && (
-                <div className="flex items-center justify-between mt-3">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Showing {groupedLogs.length} session(s)
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={expandAll}
-                      className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-                    >
-                      Expand All
-                    </button>
-                    <span className="text-gray-400">|</span>
-                    <button
-                      onClick={collapseAll}
-                      className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-                    >
-                      Collapse All
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Session Groups */}
-            {!groupedLogs ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Loading logs...
+            {/* Bulk Actions */}
+            {groupedLogs && groupedLogs.length > 0 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Showing{" "}
+                  <span className="text-foreground">{groupedLogs.length}</span>{" "}
+                  sessions
                 </p>
-              </div>
-            ) : groupedLogs.length > 0 ? (
-              <div>
-                {groupedLogs.map((session) => (
-                  <SessionGroup
-                    key={session.sessionId}
-                    sessionId={session.sessionId}
-                    messages={session.messages}
-                    isExpanded={expandedSessions.has(session.sessionId)}
-                    onToggle={() => toggleSession(session.sessionId)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-12 text-center">
-                <FiFilter className="text-6xl text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-gray-400 text-lg">
-                  No messages found
-                </p>
-                <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">
-                  Try adjusting your filters
-                </p>
+                <div className="flex gap-4 text-sm font-semibold">
+                  <button
+                    onClick={expandAll}
+                    className="text-primary hover:text-primary/80 transition-colors"
+                  >
+                    Expand All
+                  </button>
+                  <button
+                    onClick={collapseAll}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Collapse All
+                  </button>
+                </div>
               </div>
             )}
           </div>
-        )}
-      </div>
+
+          {/* Session List */}
+          {!groupedLogs ? (
+            <div className="flex flex-col items-center justify-center py-20 opacity-50 animate-pulse">
+              <div className="h-10 w-10 bg-primary/20 rounded-full mb-4" />
+              <p>Fetching logs...</p>
+            </div>
+          ) : groupedLogs.length > 0 ? (
+            <div className="space-y-4">
+              {groupedLogs.map((session) => (
+                <SessionGroup
+                  key={session.sessionId}
+                  sessionId={session.sessionId}
+                  messages={session.messages}
+                  isExpanded={expandedSessions.has(session.sessionId)}
+                  onToggle={() => toggleSession(session.sessionId)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 bg-card border border-dashed border-border rounded-3xl">
+              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                <FiFilter className="text-2xl text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground mb-1">
+                No logs found
+              </h3>
+              <p className="text-muted-foreground">
+                Try adjusting your filters to see more results.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

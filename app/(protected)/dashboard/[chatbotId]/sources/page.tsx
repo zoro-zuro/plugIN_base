@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, use } from "react";
-import { FiPlus, FiFile, FiTrash2, FiInfo } from "react-icons/fi";
+import {
+  FiPlus,
+  FiFile,
+  FiTrash2,
+  FiInfo,
+  FiUploadCloud,
+  FiDatabase,
+  FiAlertTriangle,
+  FiLoader,
+} from "react-icons/fi";
 import { uploadDocument } from "@/app/actions/upload";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -112,32 +121,18 @@ export default function SourcesPage({
   ) => {
     if (!chatbot) return;
 
-    console.log("🧹 handleDelete called", {
-      documentId,
-      fileName,
-      namespace: chatbot.namespace,
-    });
-
     try {
-      console.log("➡️ Calling deletePineconeVectors first...", {
-        namespace: chatbot.namespace,
-        documentId,
-      });
-
       const response = await deletePineconeVectors(
         documentId,
         chatbot.namespace,
       );
-      console.log("✅ deletePineconeVectors response:", response);
 
       if (!response.success) {
         throw new Error(response.error);
       }
 
-      console.log("➡️ Deleting from Convex...");
       if (response.success) {
         await deleteDoc({ documentId });
-        console.log("✅ Convex delete done");
 
         // ✅ Update chatbot document count
         const newDocCount = Math.max((documents?.length || 1) - 1, 0);
@@ -146,16 +141,11 @@ export default function SourcesPage({
           totalDocuments: newDocCount,
         });
 
-        toast.success(
-          response.message ||
-            `${fileName} deleted successfully with vectors for documentId ${documentId.toString()}`,
-        );
+        toast.success(`${fileName} deleted successfully.`);
       }
     } catch (error) {
       console.error("❌ Delete error:", error);
-      toast.error(
-        `Failed to delete ${fileName} with documentId ${documentId.toString()}`,
-      );
+      toast.error(`Failed to delete ${fileName}`);
     }
   };
 
@@ -169,23 +159,13 @@ export default function SourcesPage({
       return;
 
     try {
-      console.log(
-        "➡️ Reset: deleting all vectors for namespace",
-        chatbot.namespace,
-      );
       const vecRes = await resetVectors(chatbot.namespace);
-      console.log("✅ resetVectors response:", vecRes);
       if (!vecRes.success) throw new Error(vecRes.error);
 
-      console.log(
-        "➡️ Reset: deleting all Convex documents for namespace",
-        chatbot.namespace,
-      );
       if (vecRes.success) {
         const deletedCount = await deleteAllNamespaceDocuments({
           namespace: chatbot.namespace,
         });
-        console.log("✅ deleteAllNamespaceDocuments deleted:", deletedCount);
 
         // ✅ Update chatbot document count to 0
         await updateChatbotDocCount({
@@ -205,52 +185,63 @@ export default function SourcesPage({
 
   if (!chatbot) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <p className="text-gray-500">Loading sources...</p>
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4 animate-pulse">
+          <div className="h-12 w-12 bg-primary/20 rounded-xl" />
+          <p className="text-muted-foreground font-medium">
+            Loading knowledge base...
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="flex flex-col h-screen bg-background relative overflow-hidden">
       <Toaster position="top-right" />
 
       {/* Header */}
-      <div className="border-b border-border bg-card px-6 pb-3 flex items-center justify-between">
+      <div className="border-b border-border bg-card/50 backdrop-blur-md px-8 py-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold">Files - {chatbot.name}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Upload documents to train your AI. Extract text from PDFs, DOCX, and
-            TXT files.
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Namespace:{" "}
-            <code className="bg-muted px-1 rounded">{chatbot.namespace}</code>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
+            <FiDatabase className="text-primary" />
+            Knowledge Base
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1 max-w-lg">
+            Manage the documents your agent uses to answer questions.
           </p>
         </div>
 
         <button
           onClick={handleResetAll}
-          className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-100 hover:text-red-700 transition-colors"
+          className="inline-flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-2.5 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-all hover:shadow-lg hover:shadow-destructive/10"
         >
           <RiResetLeftLine className="h-4 w-4" />
-          Reset all data
+          Reset Knowledge Base
         </button>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-4xl mx-auto">
+      <div className="flex-1 overflow-y-auto p-8 animate-fade-in">
+        <div className="max-w-5xl mx-auto space-y-8">
           {/* Upload Area */}
-          <div className="flex items-center gap-4 mb-6">
+          <div className="group relative">
+            <div className="absolute -inset-1 bg-gradient-to-r from-primary to-fuchsia-600 rounded-2xl opacity-20 group-hover:opacity-40 blur transition duration-500" />
             <label
               htmlFor="file-upload"
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border-2 border-dashed border-border rounded-lg hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer"
+              className="relative flex flex-col items-center justify-center gap-4 p-12 bg-card border-2 border-dashed border-border rounded-xl hover:border-primary/50 hover:bg-muted/50 transition-all cursor-pointer"
             >
-              <FiPlus size={20} />
-              <span className="font-medium">
-                {isUploading ? "Uploading..." : "Add files"}
-              </span>
+              <div className="p-4 bg-primary/10 rounded-full group-hover:scale-110 transition-transform duration-300">
+                <FiUploadCloud size={32} className="text-primary" />
+              </div>
+              <div className="text-center">
+                <span className="text-lg font-bold text-foreground">
+                  {isUploading ? "Processing..." : "Click or drag files here"}
+                </span>
+                <p className="text-sm text-muted-foreground mt-1">
+                  PDF, DOCX, TXT, or MD (Max 10MB)
+                </p>
+              </div>
               <input
                 id="file-upload"
                 type="file"
@@ -261,44 +252,79 @@ export default function SourcesPage({
                 className="hidden"
               />
             </label>
+          </div>
 
-            <button className="p-3 rounded-lg hover:bg-muted transition-colors">
-              <FiInfo size={20} className="text-muted-foreground" />
-            </button>
+          {/* Info Banner */}
+          <div className="flex items-start gap-3 p-4 bg-primary/5 border border-primary/10 rounded-lg text-sm text-muted-foreground">
+            <FiInfo className="text-primary mt-0.5 shrink-0" size={16} />
+            <p>
+              Documents are automatically chunked and vectorized. Changes
+              usually take 1-2 minutes to reflect in the chat. Namespace ID:{" "}
+              <code className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-mono">
+                {chatbot.namespace}
+              </code>
+            </p>
           </div>
 
           {/* Files List */}
-          <div className="space-y-2">
-            {documents && documents.length > 0 ? (
-              documents.map((doc) => (
-                <FileCard
-                  key={doc._id}
-                  document={doc}
-                  onDelete={() => handleDelete(doc._id, doc.fileName)}
-                />
-              ))
-            ) : (
-              <div className="text-center py-12 text-muted-foreground">
-                <FiFile size={48} className="mx-auto mb-4 opacity-50" />
-                <p>No files uploaded yet</p>
-                <p className="text-sm">
-                  Upload your first document to get started
-                </p>
-              </div>
-            )}
+          <div>
+            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              Uploaded Files
+              <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">
+                {documents?.length || 0}
+              </span>
+            </h3>
+
+            <div className="space-y-3">
+              {documents && documents.length > 0 ? (
+                documents.map((doc) => (
+                  <FileCard
+                    key={doc._id}
+                    document={doc}
+                    onDelete={() => handleDelete(doc._id, doc.fileName)}
+                  />
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 bg-muted/20 border border-dashed border-border rounded-xl">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                    <FiFile
+                      size={24}
+                      className="text-muted-foreground opacity-50"
+                    />
+                  </div>
+                  <p className="text-muted-foreground font-medium">
+                    No documents yet
+                  </p>
+                  <p className="text-xs text-muted-foreground/60">
+                    Upload your first file above to start training.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="border-t border-border bg-card px-6 py-4 flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">
-          Total size: <span className="font-semibold">{totalSizeKB} KB</span> /{" "}
-          {maxSizeKB} KB • {documents?.length || 0} files
+      <div className="border-t border-border bg-card/80 backdrop-blur px-8 py-4 flex items-center justify-between sticky bottom-0 z-10">
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+            Storage Used:{" "}
+            <span className="font-mono font-medium text-foreground">
+              {totalSizeKB} KB
+            </span>
+          </div>
+          <div className="h-4 w-px bg-border" />
+          <div>Limit: {maxSizeKB} KB</div>
         </div>
-        <div className="text-xs text-muted-foreground">
-          Chatbot: {chatbot.name}
-        </div>
+
+        {isUploading && (
+          <div className="flex items-center gap-2 text-xs font-bold text-primary animate-pulse">
+            <FiLoader className="animate-spin" />
+            Syncing vectors...
+          </div>
+        )}
       </div>
     </div>
   );
@@ -315,7 +341,6 @@ function FileCard({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
-    console.log("🧹 FileCard delete clicked for", document.fileName);
     if (confirm(`Delete ${document.fileName}?`)) {
       setIsDeleting(true);
       await onDelete();
@@ -334,21 +359,30 @@ function FileCard({
       month: "short",
       day: "numeric",
       year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   return (
-    <div className="flex items-center justify-between p-4 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors">
-      <div className="flex items-center gap-3 flex-1">
-        <div className="p-2 bg-primary/10 rounded">
-          <FiFile size={20} className="text-primary" />
+    <div className="group flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
+      <div className="flex items-center gap-4 flex-1 min-w-0">
+        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+          <FiFile size={24} className="text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-medium truncate">{document.fileName}</h3>
-          <p className="text-sm text-muted-foreground">
-            {formatFileSize(document.fileSize)} • {document.chunksCount} chunks
-            • {formatDate(document.uploadedAt)}
-          </p>
+          <h3 className="font-semibold text-foreground truncate">
+            {document.fileName}
+          </h3>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+            <span className="bg-muted px-1.5 rounded font-mono">
+              {formatFileSize(document.fileSize)}
+            </span>
+            <span>•</span>
+            <span>{document.chunksCount} chunks</span>
+            <span>•</span>
+            <span>{formatDate(document.uploadedAt)}</span>
+          </div>
         </div>
       </div>
 
@@ -356,9 +390,14 @@ function FileCard({
         <button
           onClick={handleDelete}
           disabled={isDeleting}
-          className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+          className="p-2.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors disabled:opacity-50"
+          title="Delete file"
         >
-          <FiTrash2 size={18} />
+          {isDeleting ? (
+            <FiLoader className="animate-spin" />
+          ) : (
+            <FiTrash2 size={18} />
+          )}
         </button>
       </div>
     </div>
