@@ -13,6 +13,15 @@ import {
 } from "react-icons/fi";
 import { Zap } from "lucide-react";
 
+function ChatbotTotalChats({ chatId }: { chatId: string }) {
+  const total = useQuery(api.analytics.getTotalChats, {
+    chatbotId: chatId,
+  });
+
+  // render whatever you need using total
+  return <span>{total ?? 0}</span>;
+}
+
 export default function ManageChatbotsPage() {
   const { user } = useUser();
   const chatbots = useQuery(
@@ -139,7 +148,7 @@ export default function ManageChatbotsPage() {
                 <div className="grid grid-cols-2 gap-3 mb-6">
                   <div className="bg-primary/5 rounded-xl p-3 text-center border border-primary/10 group-hover:bg-primary/10 transition-colors">
                     <p className="text-2xl font-bold text-primary">
-                      {chatbot.totalMessages || 0}
+                      <ChatbotTotalChats chatId={chatbot.chatbotId} />
                     </p>
                     <p className="text-xs text-muted-foreground font-medium flex items-center justify-center gap-1">
                       <FiMessageSquare className="h-3 w-3" /> Messages

@@ -20,21 +20,22 @@ import { FiSun, FiMoon } from "react-icons/fi";
 import { useTheme } from "../hooks/useTheme";
 import { Button } from "./Buttons";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export function Header() {
   const { isSignedIn } = useUser();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
-  // const [scrolled, setScrolled] = useState(false);
+  const [scrolled, setScrolled] = useState(true);
+  const router = useRouter();
 
   // Handle scroll effect for glassmorphism
-  // useEffect(() => {
-  //   const handleScroll = () => setScrolled(window.scrollY > 20);
-  //   window.addEventListener("scroll", handleScroll);
-  //   return () => window.removeEventListener("scroll", handleScroll);
-  // }, []);
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 0 ? false : true);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Hide header on specific routes
   const shouldHideHeader =
@@ -61,14 +62,16 @@ export function Header() {
 
   return (
     <div
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "glass-morphism shadow-sm" : "bg-transparent"}`}
     >
       <Navbar className="!bg-transparent !border-none">
         {/* Desktop Navigation */}
         <NavBody className="flex justify-between items-center hidden md:flex max-w-7xl mx-auto px-6 h-16">
           {/* Left: PlugIN logo */}
-          <Link
-            href={isSignedIn ? "/chatbot/manage" : "/"}
+          <button
+            onClick={() =>
+              isSignedIn ? router.push("/chatbot/manage") : router.push("/")
+            }
             className="flex items-center gap-2 group"
           >
             {/* <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white font-bold shadow-lg shadow-violet-500/20 group-hover:shadow-violet-500/40 transition-all">
@@ -77,7 +80,7 @@ export function Header() {
             <span className="font-bold text-lg tracking-tight text-foreground group-hover:text-primary transition-colors">
               PlugIN
             </span>
-          </Link>
+          </button>
 
           {/* Center: Navigation Items */}
           <div className="flex-1 flex justify-center">

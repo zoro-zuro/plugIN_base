@@ -259,10 +259,7 @@ export default function SourcesPage({
             <FiInfo className="text-primary mt-0.5 shrink-0" size={16} />
             <p>
               Documents are automatically chunked and vectorized. Changes
-              usually take 1-2 minutes to reflect in the chat. Namespace ID:{" "}
-              <code className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-mono">
-                {chatbot.namespace}
-              </code>
+              usually take 1-2 minutes to reflect in the chat.
             </p>
           </div>
 

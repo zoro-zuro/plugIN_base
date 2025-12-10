@@ -84,6 +84,10 @@ export const getChatAnalytics = query({
       )
       .collect();
 
+    const sessionCount = sessions.filter((s) => {
+      return s.messageCount > 0;
+    });
+
     // Get all messages in date range
     const messages = await ctx.db
       .query("chat_messages")
@@ -97,7 +101,7 @@ export const getChatAnalytics = query({
       .collect();
 
     // Calculate metrics
-    const totalChats = sessions.length;
+    const totalChats = sessionCount.length;
     const totalMessages = messages.length;
     const receivedMessages = messages.filter((m) => m.role === "user").length;
     const sentMessages = messages.filter((m) => m.role === "assistant").length;
@@ -184,5 +188,23 @@ export const addMessageFeedback = mutation({
     await ctx.db.patch(args.messageId, {
       feedback: args.feedback,
     });
+  },
+});
+
+// Get total chats for dashboard
+export const getTotalChats = query({
+  args: {
+    chatbotId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const sessions = await ctx.db
+      .query("chat_sessions")
+      .withIndex("by_chatbot", (q) => q.eq("chatbotId", args.chatbotId))
+      .collect();
+
+    const sessionCount = sessions.filter((s) => {
+      return s.messageCount > 0;
+    });
+    return sessionCount.length;
   },
 });

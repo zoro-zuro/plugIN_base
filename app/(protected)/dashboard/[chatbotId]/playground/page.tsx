@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, use } from "react";
 import { FiSend, FiLoader, FiRefreshCw, FiCpu } from "react-icons/fi";
+import { FaUser } from "react-icons/fa6";
 import { generateResponse } from "@/app/actions/message";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -260,23 +261,25 @@ export default function PlaygroundPage({
       {/* Input Area */}
       <div className="border-t border-border bg-background/80 backdrop-blur-md p-4 sticky bottom-0 z-20">
         <div className="max-w-3xl mx-auto relative">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyPress}
-            placeholder={`Message ${chatbot.name}...`}
-            className="w-full resize-none rounded-2xl border border-input bg-muted/30 px-5 py-4 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm placeholder:text-muted-foreground"
-            rows={1}
-            style={{ minHeight: "56px", maxHeight: "200px" }}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-            className="absolute right-2 bottom-2 p-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-md shadow-primary/20"
-          >
-            <FiSend size={16} className={isLoading ? "animate-pulse" : ""} />
-          </button>
+          <div className="flex justify-between items-center">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder={`Message ${chatbot.name}...`}
+              className="w-full resize-none rounded-2xl border border-input bg-muted/30 px-5 py-4 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm placeholder:text-muted-foreground"
+              rows={1}
+              style={{ minHeight: "56px", maxHeight: "200px" }}
+            />
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || isLoading}
+              className="absolute right-2 bottom-2.5 p-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-md shadow-primary/20"
+            >
+              <FiSend size={16} className={isLoading ? "animate-pulse" : ""} />
+            </button>
+          </div>
         </div>
         <p className="text-[10px] text-center text-muted-foreground mt-3">
           AI responses can be inaccurate. Check important info.
@@ -301,7 +304,9 @@ function MessageBubble({ message }: { message: Message }) {
           className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isUser ? "bg-muted text-foreground" : "bg-primary/10 text-primary"}`}
         >
           {isUser ? (
-            <div className="text-xs font-bold">YOU</div>
+            <div className="text-xs font-bold">
+              <FaUser className="text-md" />
+            </div>
           ) : (
             <Zap size={14} className="fill-current" />
           )}

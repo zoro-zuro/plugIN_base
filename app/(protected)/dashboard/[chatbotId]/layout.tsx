@@ -15,6 +15,7 @@ import {
   FiSun,
   FiMoon,
 } from "react-icons/fi";
+import { LiaRocketSolid } from "react-icons/lia";
 import { GrDocumentTest } from "react-icons/gr";
 import { RxRocket as FiRocket } from "react-icons/rx";
 import { UserButton, useUser, SignOutButton } from "@clerk/nextjs";
@@ -27,7 +28,7 @@ const sidebarItems = [
   { name: "Sources", icon: FiDatabase, path: "sources" },
   { name: "Evaluation", icon: GrDocumentTest, path: "eval" },
   { name: "Activity", icon: FiActivity, path: "activity" },
-  { name: "Deploy", icon: FiRocket, path: "deploy" },
+  { name: "Deploy", icon: LiaRocketSolid, path: "deploy" },
   { name: "Settings", icon: FiSettings, path: "settings" },
 ];
 
@@ -57,7 +58,7 @@ export default function DashboardLayout({
       {/* Mobile Menu Toggle */}
       <button
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 p-2.5 bg-card border border-border rounded-xl shadow-lg hover:bg-muted transition-colors"
+        className="md:hidden fixed top-4 right-4 z-50 p-2.5 bg-card border border-border rounded-xl shadow-lg hover:bg-muted transition-colors"
       >
         {isSidebarOpen ? <FiX size={20} /> : <FiMenu size={20} />}
       </button>
@@ -79,7 +80,7 @@ export default function DashboardLayout({
         {/* Logo/Brand Header */}
         <div className="h-20 flex justify-between items-center px-6 border-b border-border">
           <button
-            onClick={() => router.push("/chatbots/manage")}
+            onClick={() => router.push("/")}
             className="flex items-center gap-2 group w-full"
           >
             {/* <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-fuchsia-600 text-white font-bold shadow-md group-hover:shadow-primary/25 transition-all">
@@ -217,7 +218,7 @@ export default function DashboardLayout({
         {/* Top fade for scroll indication */}
         <div className="sticky top-0 h-8 bg-gradient-to-b from-background to-transparent z-10 pointer-events-none" />
 
-        <div className="px-4 pb-20 md:px-8 max-w-7xl mx-auto">{children}</div>
+        <div className="px-4 md:px-8 max-w-7xl mx-auto">{children}</div>
       </main>
     </div>
   );
