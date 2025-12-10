@@ -370,8 +370,8 @@ export default function EmbedChatWidget({
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t bg-white">
-        <div className="flex gap-2">
+      <div className="p-3 bg-white border-t border-slate-100">
+        <div className="relative flex items-center">
           <input
             type="text"
             value={input}
@@ -379,19 +379,24 @@ export default function EmbedChatWidget({
             onKeyPress={handleKeyPress}
             placeholder="Type your message..."
             disabled={isLoading}
-            className="flex-1 px-4 py-2.5 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-black disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm text-slate-900 transition-all placeholder:text-slate-400"
           />
           <button
             onClick={handleSend}
             disabled={isLoading || !input.trim()}
-            className="bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
+            className="absolute right-2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-all shadow-sm hover:shadow-md active:scale-95"
           >
-            <FiSend size={18} />
+            {isLoading ? (
+              <FiLoader className="animate-spin" size={16} />
+            ) : (
+              <FiSend size={16} />
+            )}
           </button>
         </div>
-        <p className="text-xs text-gray-500 text-center mt-2">
-          Powered by {chatbot.name}
-        </p>
+        <div className="text-[10px] text-slate-400 text-center mt-2 flex items-center justify-center gap-1">
+          Powered by{" "}
+          <span className="font-semibold text-slate-500">AutoRAG</span>
+        </div>
       </div>
     </div>
   );

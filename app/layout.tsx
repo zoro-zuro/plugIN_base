@@ -53,48 +53,6 @@ export default function RootLayout({
             <main className="relative flex flex-col min-h-[calc(100vh-4rem)]">
               {children}
             </main>
-            {/* FOOTER */}
-            <footer className="border-t border-border bg-card pt-16 pb-8">
-              <div className="mx-auto max-w-7xl px-6 flex flex-col md:flex-row justify-between items-center gap-8">
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded bg-primary text-xs text-white font-bold">
-                      P
-                    </div>
-                    <span className="font-bold text-foreground text-lg">
-                      Plugin_base
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Made with ♥️ and lot of ☕️ {""}
-                    <span>
-                      <Link
-                        href="https://sheik-portfolio-taupe.vercel.app/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        By{" "}
-                        <span className="hover:text-primary transition-colors font-medium">
-                          Shiek
-                        </span>
-                        .
-                      </Link>
-                    </span>
-                  </p>
-                </div>
-
-                <div className="flex gap-8 text-sm font-medium text-muted-foreground">
-                  <Link
-                    href="https://github.com/zoro-zuro/plugIN_base.git"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-primary transition-colors"
-                  >
-                    GitHub
-                  </Link>
-                </div>
-              </div>
-            </footer>
           </ConvexClientProvider>
         </ClerkProvider>
       </body>

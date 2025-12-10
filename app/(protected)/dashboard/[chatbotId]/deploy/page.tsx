@@ -49,18 +49,23 @@ export default function DeployPage({
   (function() {
     var embedUrl = '${embedUrl}';
     
-    // DNS prefetch for faster loading
-    var dnsPrefetch = document.createElement('link');
-    dnsPrefetch.rel = 'dns-prefetch';
-    dnsPrefetch.href = embedUrl;
-    document.head.appendChild(dnsPrefetch);
+    // DNS prefetch
+    var link = document.createElement('link');
+    link.rel = 'dns-prefetch';
+    link.href = embedUrl;
+    document.head.appendChild(link);
 
-    // Create chat button
+    // Chat Button
     var button = document.createElement('button');
-    button.innerHTML = '💬';
-    button.style.cssText = 'position:fixed;bottom:20px;right:20px;width:60px;height:60px;border-radius:50%;border:none;background:linear-gradient(135deg,#7c3aed 0%,#d946ef 100%);color:white;font-size:28px;cursor:pointer;box-shadow:0 4px 20px rgba(124,58,237,0.3);z-index:999999;transition:transform 0.2s;';
-    button.onmouseover = function() { this.style.transform = 'scale(1.1)'; };
-    button.onmouseout = function() { this.style.transform = 'scale(1)'; };
+    // SVG Icon
+    var chatIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
+    var closeIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+    
+    button.innerHTML = chatIcon;
+    button.style.cssText = 'position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;border:none;background:linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);color:white;cursor:pointer;box-shadow:0 4px 12px rgba(37,99,235,0.3);z-index:999999;transition:all 0.3s ease;display:flex;align-items:center;justify-content:center;padding:0;';
+    
+    button.onmouseover = function() { this.style.transform = 'scale(1.05) translateY(-2px)'; this.style.boxShadow = '0 6px 16px rgba(37,99,235,0.4)'; };
+    button.onmouseout = function() { this.style.transform = 'scale(1) translateY(0)'; this.style.boxShadow = '0 4px 12px rgba(37,99,235,0.3)'; };
 
     var iframe = null;
     var isOpen = false;
@@ -71,17 +76,20 @@ export default function DeployPage({
       if (isOpen && !iframe) {
         iframe = document.createElement('iframe');
         iframe.src = embedUrl;
-        iframe.style.cssText = 'position:fixed;bottom:90px;right:20px;width:400px;height:600px;border:none;border-radius:12px;box-shadow:0 4px 30px rgba(0,0,0,0.1);z-index:999999;background:white;';
+        iframe.style.cssText = 'position:fixed;bottom:96px;right:24px;width:400px;height:600px;max-height:80vh;border:none;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.15);z-index:999999;background:white;opacity:0;transition:opacity 0.3s ease;';
         document.body.appendChild(iframe);
         
-        button.innerHTML = '⏳';
-        iframe.onload = function() {
-          button.innerHTML = '✕';
-        };
-      } else if (iframe) {
+        // Fade in
+        requestAnimationFrame(() => iframe.style.opacity = '1');
+      } 
+      
+      if (iframe) {
         iframe.style.display = isOpen ? 'block' : 'none';
-        button.innerHTML = isOpen ? '✕' : '💬';
+        iframe.style.opacity = isOpen ? '1' : '0';
       }
+      
+      button.innerHTML = isOpen ? closeIcon : chatIcon;
+      button.style.background = isOpen ? '#1f2937' : 'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)';
     };
 
     document.body.appendChild(button);
@@ -89,78 +97,16 @@ export default function DeployPage({
 </script>`;
 
       case "react":
-        return `// Install in your React app
-// npm install react
-
+        return `// npm install lucide-react (or use your own icons)
 import { useEffect, useState } from 'react';
 
-function ChatbotWidget() {
-  const [isOpen, setIsOpen] = useState(false);
-  const embedUrl = '${embedUrl}';
-
-  useEffect(() => {
-    const link = document.createElement('link');
-    link.rel = 'dns-prefetch';
-    link.href = embedUrl;
-    document.head.appendChild(link);
-  }, []);
-
-  return (
-    <>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          width: '60px',
-          height: '60px',
-          borderRadius: '50%',
-          border: 'none',
-          background: 'linear-gradient(135deg, #7c3aed 0%, #d946ef 100%)',
-          color: 'white',
-          fontSize: '28px',
-          cursor: 'pointer',
-          boxShadow: '0 4px 20px rgba(124,58,237,0.3)',
-          zIndex: 999999,
-          transform: 'scale(1)',
-          transition: 'transform 0.2s',
-        }}
-        onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-      >
-        {isOpen ? '✕' : '💬'}
-      </button>
-
-      {isOpen && (
-        <iframe
-          src={embedUrl}
-          style={{
-            position: 'fixed',
-            bottom: '90px',
-            right: '20px',
-            width: '400px',
-            height: '600px',
-            border: 'none',
-            borderRadius: '12px',
-            boxShadow: '0 4px 30px rgba(0,0,0,0.1)',
-            zIndex: 999999,
-            background: 'white',
-          }}
-          title="Chatbot"
-        />
-      )}
-    </>
-  );
-}
-
-export default ChatbotWidget;`;
-
-      case "nextjs":
-        return `// components/ChatbotWidget.tsx
-'use client';
-
-import { useEffect, useState } from 'react';
+// Simple SVG Icons inline for portability
+const ChatIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+);
+const CloseIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+);
 
 export default function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -177,15 +123,52 @@ export default function ChatbotWidget() {
     <>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-5 right-5 w-[60px] h-[60px] rounded-full border-none text-white text-[28px] cursor-pointer shadow-2xl z-[50] transition-transform hover:scale-110 bg-gradient-to-br from-violet-600 to-fuchsia-500 shadow-violet-500/30"
+        style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          width: '56px',
+          height: '56px',
+          borderRadius: '50%',
+          border: 'none',
+          background: isOpen ? '#1f2937' : 'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)',
+          color: 'white',
+          cursor: 'pointer',
+          boxShadow: '0 4px 12px rgba(37,99,235,0.3)',
+          zIndex: 999999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.3s ease',
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.transform = 'scale(1.05) translateY(-2px)';
+          e.currentTarget.style.boxShadow = '0 6px 16px rgba(37,99,235,0.4)';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.transform = 'scale(1) translateY(0)';
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(37,99,235,0.3)';
+        }}
       >
-        {isOpen ? '✕' : '💬'}
+        {isOpen ? <CloseIcon /> : <ChatIcon />}
       </button>
 
       {isOpen && (
         <iframe
           src={embedUrl}
-          className="fixed bottom-[90px] right-5 w-[400px] h-[600px] border-none rounded-xl shadow-2xl z-[50] bg-white"
+          style={{
+            position: 'fixed',
+            bottom: '96px',
+            right: '24px',
+            width: '400px',
+            height: '600px',
+            maxHeight: '80vh',
+            border: 'none',
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+            zIndex: 999999,
+            background: 'white',
+          }}
           title="Chatbot"
         />
       )}
@@ -193,7 +176,47 @@ export default function ChatbotWidget() {
   );
 }`;
 
-      // ... (keeping other frameworks standard for brevity but you can theme them similarly if needed)
+      case "nextjs":
+        return `// components/ChatbotWidget.tsx
+'use client';
+
+import { useEffect, useState } from 'react';
+import { MessageCircle, X } from 'lucide-react'; // Make sure to install lucide-react
+
+export default function ChatbotWidget() {
+  const [isOpen, setIsOpen] = useState(false);
+  const embedUrl = '${embedUrl}';
+
+  useEffect(() => {
+    const link = document.createElement('link');
+    link.rel = 'dns-prefetch';
+    link.href = embedUrl;
+    document.head.appendChild(link);
+  }, []);
+
+  return (
+    <>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full border-none text-white cursor-pointer shadow-lg shadow-blue-600/30 z-50 transition-all hover:scale-105 hover:-translate-y-0.5 hover:shadow-xl flex items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-600"
+        style={{
+          background: isOpen ? '#1f2937' : undefined // Dark grey when open
+        }}
+      >
+        {isOpen ? <X size={24} /> : <MessageCircle size={24} />}
+      </button>
+
+      {isOpen && (
+        <iframe
+          src={embedUrl}
+          className="fixed bottom-24 right-6 w-[400px] h-[600px] max-h-[80vh] border-none rounded-2xl shadow-2xl z-50 bg-white"
+          title="Chatbot"
+        />
+      )}
+    </>
+  );
+}`;
+
       default:
         return "// Select a framework to see the code";
     }
@@ -203,12 +226,6 @@ export default function ChatbotWidget() {
     { id: "html" as Framework, name: "HTML/JS", icon: <FiGlobe /> },
     { id: "react" as Framework, name: "React", icon: <FiBox /> },
     { id: "nextjs" as Framework, name: "Next.js", icon: <Zap size={16} /> },
-    {
-      id: "vue" as Framework,
-      name: "Vue",
-      icon: <span className="font-bold text-xs">V</span>,
-    },
-    { id: "flutter" as Framework, name: "Flutter", icon: <FiSmartphone /> },
   ];
 
   const handleCopy = () => {

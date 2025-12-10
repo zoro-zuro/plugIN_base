@@ -77,17 +77,24 @@ export default function DashboardLayout({
         } md:translate-x-0 fixed md:static inset-y-0 left-0 z-40 w-64 bg-card border-r border-border transition-transform duration-300 ease-in-out flex flex-col shadow-2xl md:shadow-none`}
       >
         {/* Logo/Brand Header */}
-        <div className="h-20 flex items-center px-6 border-b border-border">
+        <div className="h-20 flex justify-between items-center px-6 border-b border-border">
           <button
             onClick={() => router.push("/chatbots/manage")}
             className="flex items-center gap-2 group w-full"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-fuchsia-600 text-white font-bold shadow-md group-hover:shadow-primary/25 transition-all">
+            {/* <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-fuchsia-600 text-white font-bold shadow-md group-hover:shadow-primary/25 transition-all">
               P
-            </div>
-            <span className="text-xl font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">
+            </div> */}
+            <span className="text-xl font-bold tracking-tight gradient-text group-hover:text-primary transition-colors">
               PlugIN
             </span>
+          </button>
+          {/* Theme Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            className="flex items-center p-2 rounded-full text-sm font-medium text-muted-foreground bg-muted hover:text-foreground transition-colors"
+          >
+            {theme === "dark" ? <FiSun size={16} /> : <FiMoon size={16} />}
           </button>
         </div>
 
@@ -96,9 +103,6 @@ export default function DashboardLayout({
           {/* Chatbot Name Header (Optional Context) */}
           {chatbot && (
             <div className="px-3 mb-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                Current Agent
-              </p>
               <div className="flex items-center gap-2 text-sm font-medium text-foreground truncate">
                 <div className="w-2 h-2 rounded-full bg-primary" />
                 {chatbot.name}
@@ -177,15 +181,6 @@ export default function DashboardLayout({
 
           {/* User Profile, Theme & Logout */}
           <div className="p-4 pt-0 space-y-2">
-            {/* Theme Toggle Button */}
-            <button
-              onClick={toggleTheme}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
-              {theme === "dark" ? <FiSun size={16} /> : <FiMoon size={16} />}
-              <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
-            </button>
-
             <div className="flex items-center gap-3 px-1 py-2">
               <UserButton
                 afterSignOutUrl="/"
@@ -206,7 +201,7 @@ export default function DashboardLayout({
 
               <SignOutButton>
                 <button
-                  className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                  className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors bg-muted"
                   title="Logout"
                 >
                   <FiLogOut size={16} />

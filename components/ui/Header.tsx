@@ -51,7 +51,6 @@ export function Header() {
   const authenticatedNavItems = [
     { name: "My Chatbots", link: "/chatbot/manage" },
     { name: "Create Chatbot", link: "/chatbot/create" },
-    { name: "Playground", link: "/dashboard/playground" },
   ];
 
   const navItems = isSignedIn ? authenticatedNavItems : publicNavItems;
@@ -72,9 +71,9 @@ export function Header() {
             href={isSignedIn ? "/chatbot/manage" : "/"}
             className="flex items-center gap-2 group"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white font-bold shadow-lg shadow-violet-500/20 group-hover:shadow-violet-500/40 transition-all">
+            {/* <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white font-bold shadow-lg shadow-violet-500/20 group-hover:shadow-violet-500/40 transition-all">
               P
-            </div>
+            </div> */}
             <span className="font-bold text-lg tracking-tight text-foreground group-hover:text-primary transition-colors">
               PlugIN
             </span>
@@ -84,7 +83,7 @@ export function Header() {
           <div className="flex-1 flex justify-center">
             <NavItems
               items={navItems}
-              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              className="text-sm font-medium text-muted hover:text-primary transition-colors"
             />
           </div>
 
@@ -117,9 +116,9 @@ export function Header() {
         <MobileNav className="flex md:hidden">
           <MobileNavHeader className="px-4 py-3">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white font-bold">
+              {/* <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white font-bold">
                 P
-              </div>
+              </div> */}
               <span className="font-bold text-lg">PlugIN</span>
             </Link>
             <MobileNavToggle
@@ -138,7 +137,7 @@ export function Header() {
                 key={`mobile-link-${idx}`}
                 href={item.link}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="block py-3 px-4 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-lg mx-2 my-1"
+                className="block py-3 px-4 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-lg mx-2 my-1"
               >
                 {item.name}
               </Link>
