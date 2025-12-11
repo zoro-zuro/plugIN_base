@@ -48,7 +48,7 @@ export default function RootLayout({
       >
         <ClerkProvider dynamic>
           <ConvexClientProvider>
-            <Header />
+            {/* <Header /> */}
             <main className="relative flex flex-col min-h-[calc(100vh-4rem)]">
               {children}
             </main>

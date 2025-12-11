@@ -21,17 +21,25 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
-  const [scrolled, setScrolled] = useState(true);
   const router = useRouter();
+  // 1. Rename to 'isAtTop' so the logic is clear (True = at top, False = scrolled down)
+  const [isAtTop, setIsAtTop] = useState(true);
 
-  // Handle scroll effect for glassmorphism
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 0 ? false : true);
-    window.addEventListener("scroll", handleScroll);
+    const handleScroll = () => {
+      // 2. Use a small buffer (e.g., > 10px) to prevent flickering on small movements
+      // Logic: If scrollY is low, we are "at top".
+      setIsAtTop(window.scrollY <= 10);
+    };
+
+    // 3. Trigger once on mount to ensure state is correct immediately (e.g., page refresh)
+    handleScroll();
+
+    // 4. Use { passive: true } for better scroll performance in browsers
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Hide header on specific routes
   const shouldHideHeader =
     pathname?.startsWith("/dashboard") ||
     pathname?.startsWith("/chatbots/bot_") ||
@@ -55,110 +63,98 @@ export function Header() {
 
   return (
     <div
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "glass-morphism shadow-sm" : "bg-transparent"}`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isAtTop
+          ? "glass-morphism shadow-sm" // Style when at the top (Before scroll)
+          : "bg-transparent" // Style when scrolled down (After scroll)
+      }`}
     >
-      <Navbar className="!bg-transparent !border-none">
+      <Navbar>
         {/* Desktop Navigation */}
-        <NavBody className="flex justify-between items-center hidden md:flex max-w-7xl mx-auto px-6 h-16">
-          {/* Left: PlugIN logo */}
+        <NavBody>
+          {/* Logo */}
           <button
             onClick={() => router.push("/")}
-            className="flex items-center gap-2 group z-99"
+            className="flex items-center gap-2 group outline-none"
           >
-            {/* <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white font-bold shadow-lg shadow-violet-500/20 group-hover:shadow-violet-500/40 transition-all">
-              P
-            </div> */}
-            <span className="font-bold text-lg tracking-tight text-foreground group-hover:text-primary transition-colors">
+            <span className="font-bold text-xl tracking-tight text-foreground group-hover:text-primary transition-colors">
               PlugIN
             </span>
           </button>
 
-          {/* Center: Navigation Items */}
+          {/* Center Items */}
           <div className="flex-1 flex justify-center">
-            <NavItems
-              items={navItems}
-              className="text-sm font-medium text-muted hover:text-primary transition-colors"
-            />
+            <NavItems items={navItems} />
           </div>
 
-          {/* Right: Actions */}
+          {/* Right Actions */}
           <div className="flex items-center gap-4">
             <Button
-              aria-label="Toggle dark mode"
               variant="ghost"
               onClick={toggleTheme}
-              className="p-3.5 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors z-[99]"
+              className="p-2.5 rounded-full hover:bg-accent text-foreground transition-colors"
             >
               {theme === "dark" ? <FiSun size={18} /> : <FiMoon size={18} />}
             </Button>
 
             {!isSignedIn ? (
               <SignInButton mode="modal">
-                <button className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-violet-500/25 z-99">
-                  Login
+                <button className="rounded-full bg-primary px-5 py-2 text-sm font-bold text-white hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-primary/25">
+                  Sign In
                 </button>
               </SignInButton>
             ) : (
-              <div className="flex items-center gap-3">
-                <UserButton afterSignOutUrl="/" />
-              </div>
+              <UserButton afterSignOutUrl="/" />
             )}
           </div>
         </NavBody>
 
         {/* Mobile Navigation */}
-        <MobileNav className="flex md:hidden">
-          <MobileNavHeader className="px-4 py-3">
+        <MobileNav className="md:hidden">
+          <MobileNavHeader>
             <Link href="/" className="flex items-center gap-2">
-              {/* <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white font-bold">
-                P
-              </div> */}
-              <span className="font-bold text-lg">PlugIN</span>
+              <span className="font-bold text-lg text-foreground">PlugIN</span>
             </Link>
-            <MobileNavToggle
-              isOpen={isMobileMenuOpen}
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            />
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-md hover:bg-accent text-foreground transition-colors"
+              >
+                {theme === "dark" ? <FiSun size={20} /> : <FiMoon size={20} />}
+              </button>
+
+              <MobileNavToggle
+                isOpen={isMobileMenuOpen}
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              />
+            </div>
           </MobileNavHeader>
 
           <MobileNavMenu
             isOpen={isMobileMenuOpen}
             onClose={() => setIsMobileMenuOpen(false)}
-            className="bg-background/95 backdrop-blur-xl border-t border-border"
           >
             {navItems.map((item, idx) => (
               <Link
                 key={`mobile-link-${idx}`}
                 href={item.link}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="block py-3 px-4 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-lg mx-2 my-1"
+                className="block w-full py-3 px-4 text-base font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
               >
                 {item.name}
               </Link>
             ))}
 
-            <div className="p-4 border-t border-border mt-2">
-              <button
-                onClick={() => {
-                  toggleTheme();
-                  setIsMobileMenuOpen(false);
-                }}
-                className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-accent text-sm font-medium"
-              >
-                {theme === "dark" ? <FiSun size={18} /> : <FiMoon size={18} />}
-                <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
-              </button>
-
-              {!isSignedIn && (
-                <div className="mt-4">
-                  <SignInButton>
-                    <button className="w-full rounded-full bg-primary py-2.5 text-sm font-medium text-white shadow-lg shadow-violet-500/20">
-                      Sign In
-                    </button>
-                  </SignInButton>
-                </div>
-              )}
-            </div>
+            {!isSignedIn && (
+              <div className="mt-4 pt-4 border-t border-border w-full">
+                <SignInButton>
+                  <button className="w-full rounded-xl bg-primary py-3 text-base font-bold text-white shadow-lg active:scale-95 transition-transform">
+                    Sign In
+                  </button>
+                </SignInButton>
+              </div>
+            )}
           </MobileNavMenu>
         </MobileNav>
       </Navbar>

@@ -202,7 +202,7 @@ export default function PlaygroundPage({
                   "What is this document about?",
                   "Summarize the key points",
                   "Who is the author?",
-                  "Explain like I&apos;m 5",
+                  "Explain like Im 5",
                 ].map((suggestion, i) => (
                   <button
                     key={i}

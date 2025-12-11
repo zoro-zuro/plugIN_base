@@ -1,9 +1,12 @@
 "use server";
 
-// import { currentUser } from "@clerk/nextjs/server";
 import { ChatGroq } from "@langchain/groq";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import { HumanMessage, AIMessage } from "@langchain/core/messages";
+import {
+  HumanMessage,
+  AIMessage,
+  SystemMessage,
+} from "@langchain/core/messages"; // ✅ Import SystemMessage
 import { MemorySaver } from "@langchain/langgraph";
 import { KnowledgeBaseTool } from "@/lib/tools";
 import { Doc } from "@/convex/_generated/dataModel";
@@ -15,19 +18,16 @@ type Message = {
 
 type GenerateOptions = {
   chatHistory?: Message[];
-  chatbot: Doc<"chatbots">; // ✅ Type-safe chatbot object
+  chatbot: Doc<"chatbots">;
   sessionId?: string;
   evalMode?: boolean;
 };
 
 const checkpointer = new MemorySaver();
 
-// ✅ Default system prompt if not configured
 const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant with access to a knowledge base through the knowledge_base_search tool.
 
-
 CRITICAL INSTRUCTIONS:
-
 
 1. WHEN TO USE THE TOOL:
 ✅ USE knowledge_base_search ONLY for:
@@ -35,35 +35,25 @@ CRITICAL INSTRUCTIONS:
 - Data retrieval requests (e.g., "What is the revenue?")
 - Document-based information
 
-
 ❌ NEVER use the tool for:
 - Greetings: "hi", "hello", "hey", "good morning"
 - Acknowledgments: "thanks", "ok", "good", "great", "bye"
 - Chitchat: "how are you", "nice", "cool"
 - Apologies or clarifications
 
-
 2. FOR NON-SEARCH QUERIES:
-- Just respond naturally and politely
-- Examples:
-  * User: "hi" → You: "Hello! How can I help you today?"
-  * User: "thanks" → You: "You're welcome! Let me know if you need anything else."
-  * User: "bye" → You: "Goodbye! Feel free to come back anytime."
-
+- Just respond naturally and politely.
 
 3. CONVERSATION MEMORY:
-- Check conversation history first
-- If answer was already given, use it from memory
-- Only call tool for NEW information requests
-
+- Check conversation history first.
+- If answer was already given, use it from memory.
 
 4. RESPONSE STYLE:
-- Be concise and friendly
-- Don't mention tools or processes
-- Answer directly
+- Be concise and friendly.
+- Don't mention tools or processes.
+- Answer directly.
 
-
-Remember: Not every message needs a tool call. Use common sense!`;
+IMPORTANT: Do NOT output XML tags like <function=...>. Use the standard tool calling format provided by the system.`;
 
 export const generateResponse = async (
   query: string,
@@ -78,67 +68,44 @@ export const generateResponse = async (
 
   console.log("=== AGENT FLOW START ===");
   console.log("Query:", query);
-  console.log("Eval mode:", evalMode);
-  console.log("Chat history:", chatHistory.length, "messages");
-  console.log("Session ID:", sessionId);
-  console.log("chatbot :", chatbot);
+
   if (!query?.trim()) {
-    return {
-      success: false,
-      error: "Query cannot be empty",
-    };
+    return { success: false, error: "Query cannot be empty" };
   }
 
-  // ✅ Only check Clerk auth if namespace NOT provided
   const finalNamespace = chatbot.namespace;
-
   if (!finalNamespace) {
-    // const user = await currentUser();
-    // if (!user) {
-    //   return {
-    //     success: false,
-    //     error: "User not authenticated",
-    //   };
-    // }
-    // finalNamespace = user.id;
-    return {
-      success: false,
-      error: "Namspace not found or undefined",
-    };
+    return { success: false, error: "Namespace not found or undefined" };
   }
-
-  console.log("Using namespace:", finalNamespace);
 
   try {
-    // ✅ Fetch chatbot settings by namespace (fast lookup)
-    // const chatbot = await fetchQuery(api.documents.getChatbotByNamespace, {
-    //   namespace: finalNamespace,
-    // });
-
-    // ✅ Use chatbot settings or fallback to defaults
     const modelName = chatbot?.modelName || "llama-3.1-8b-instant";
     const temperature = chatbot?.temperature ?? 0.5;
-    const systemPrompt = chatbot?.systemPrompt || DEFAULT_SYSTEM_PROMPT;
-    const maxTokens = chatbot?.maxTokens || 500;
+    // ✅ Add the safeguard to WHATEVER system prompt is coming from DB
+    const rawSystemPrompt = chatbot?.systemPrompt || DEFAULT_SYSTEM_PROMPT;
+    const systemPrompt = `${rawSystemPrompt}\n\nIMPORTANT: Do NOT use XML tags for tool calls. Use standard function calling.`;
 
-    console.log("Using model:", modelName, "temp:", temperature);
+    const maxTokens = chatbot?.maxTokens || 500;
 
     const model = new ChatGroq({
       apiKey: process.env.GROQ_API_KEY || "",
-      model: modelName, // ✅ From settings
-      temperature: temperature, // ✅ From settings
-      maxTokens: maxTokens, // ✅ From settings
+      model: modelName,
+      temperature: temperature,
+      maxTokens: maxTokens,
     });
 
-    // ✅ Use finalNamespace instead of namespace
     const kbTool = new KnowledgeBaseTool(finalNamespace);
     const tools = [kbTool];
 
+    // ✅ Bind tools explicitly
+    const modelWithTools = model.bindTools(tools);
+
     const agent = createReactAgent({
-      llm: model,
+      llm: modelWithTools,
       tools,
       checkpointSaver: checkpointer,
-      messageModifier: systemPrompt, // ✅ From settings or default
+      // ✅ Pass system prompt as a proper SystemMessage to enforce it
+      messageModifier: new SystemMessage(systemPrompt),
     });
 
     const config = {
@@ -166,12 +133,7 @@ export const generateResponse = async (
       }
     }
 
-    const response = await agent.invoke(
-      {
-        messages: allMessages,
-      },
-      config,
-    );
+    const response = await agent.invoke({ messages: allMessages }, config);
 
     const lastMessage = response.messages[response.messages.length - 1];
     const responseText =
@@ -196,16 +158,8 @@ export const generateResponse = async (
         { role: "assistant", content: responseText },
       ];
       updatedHistory = newHistory.slice(-10);
-      console.log(
-        "Trimmed chat history to last",
-        updatedHistory.length,
-        "messages",
-      );
     }
 
-    console.log(
-      `Contexts captured this call: ${contexts.length} chunks (evalMode=${evalMode})`,
-    );
     console.log("=== AGENT FLOW END ===");
 
     return {

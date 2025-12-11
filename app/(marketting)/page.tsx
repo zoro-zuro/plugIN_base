@@ -32,8 +32,7 @@ export default function Home() {
 
           {/* Main Headline */}
           <h1 className="mx-auto max-w-5xl text-4xl font-extrabold tracking-tight text-foreground sm:text-7xl mb-8 animate-slide-up">
-            Train a chatbot on your files
-            <br className="hidden sm:block" />
+            Train a chatbot on your files <br className="hidden sm:block" />
             <span className="gradient-text">
               then plug it into your website.
             </span>

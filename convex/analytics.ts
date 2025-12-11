@@ -114,7 +114,7 @@ export const getChatAnalytics = query({
 
     // Group chats by country
     const chatsByCountry: Record<string, number> = {};
-    sessions.forEach((session) => {
+    sessionCount.forEach((session) => {
       const country = session.userCountry || "Unknown";
       chatsByCountry[country] = (chatsByCountry[country] || 0) + 1;
     });

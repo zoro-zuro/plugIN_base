@@ -126,6 +126,18 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   }
 
+  .glass-effect {
+    background: rgb(255, 255, 255);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .dark .glass-effect {
+    background: rgb(15, 23, 42);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
   .card-hover {
     transition: all 0.3s ease;
   }

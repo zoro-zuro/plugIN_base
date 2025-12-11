@@ -64,6 +64,21 @@ export const getChatbotsByUserId = query({
   },
 });
 
+// check ownership of chatbot
+export const checkChatbotOwnership = query({
+  args: { chatbotId: v.string(), userId: v.string() },
+  handler: async (ctx, args) => {
+    const chatbotIds = await ctx.db
+      .query("chatbots")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    if (!chatbotIds.find((bot) => bot.chatbotId === args.chatbotId)) {
+      return false;
+    }
+    return true;
+  },
+});
 // Get single chatbot by ID
 export const getChatbotById = query({
   args: { chatbotId: v.string() },
