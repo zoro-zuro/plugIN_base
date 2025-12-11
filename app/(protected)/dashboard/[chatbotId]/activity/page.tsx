@@ -24,12 +24,21 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
 } from "recharts";
+import { IconType } from "react-icons";
 
 type Tab = "chats" | "logs";
 type FeedbackFilter = "all" | "positive" | "negative" | "no-feedback";
+
+interface MessageLog {
+  _id: string;
+  sessionId: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: number;
+  feedback?: "positive" | "negative";
+  responseTime?: number;
+}
 
 // ✅ Stat Card Component
 function StatCard({
@@ -38,7 +47,7 @@ function StatCard({
   value,
   variant = "primary",
 }: {
-  icon: any;
+  icon: IconType;
   label: string;
   value: number;
   variant?: "primary" | "secondary" | "accent" | "destructive";
@@ -74,7 +83,7 @@ function SessionGroup({
   onToggle,
 }: {
   sessionId: string;
-  messages: any[];
+  messages: MessageLog[];
   isExpanded: boolean;
   onToggle: () => void;
 }) {
@@ -240,9 +249,8 @@ export default function ActivityPage({
     new Set(),
   );
 
-  const chatbot = useQuery(api.documents.getChatbotById, { chatbotId });
-
-  // Calculate date range for chats tab
+  // ✅ Fix: Calculate stable dates using useMemo
+  // This ensures "now" is calculated once when timeRange changes, not every render
   const { startDate, endDate } = useMemo(() => {
     const now = Date.now();
     const ranges = {
@@ -251,12 +259,13 @@ export default function ActivityPage({
       month: now - 30 * 24 * 60 * 60 * 1000,
     };
     return { startDate: ranges[timeRange], endDate: now };
-  }, [timeRange]);
+  }, [timeRange]); // Only recalculate when user changes the filter
 
+  // Use a query hook that matches your backend API types
   const analytics = useQuery(api.analytics.getChatAnalytics, {
     chatbotId,
-    startDate,
-    endDate,
+    startDate, // Uses memoized value
+    endDate, // Uses memoized value
   });
 
   const logs = useQuery(api.analytics.getMessageLogs, {
@@ -301,10 +310,10 @@ export default function ActivityPage({
         if (!acc[msg.sessionId]) {
           acc[msg.sessionId] = [];
         }
-        acc[msg.sessionId].push(msg);
+        acc[msg.sessionId].push(msg as MessageLog);
         return acc;
       },
-      {} as Record<string, any[]>,
+      {} as Record<string, MessageLog[]>,
     );
 
     Object.keys(grouped).forEach((sessionId) => {
@@ -337,7 +346,7 @@ export default function ActivityPage({
 
   const collapseAll = () => setExpandedSessions(new Set());
 
-  if (!chatbot) {
+  if (!analytics) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4 animate-pulse">

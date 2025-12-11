@@ -2,13 +2,11 @@
 
 import { useState, use } from "react";
 import {
-  FiPlus,
   FiFile,
   FiTrash2,
   FiInfo,
   FiUploadCloud,
   FiDatabase,
-  FiAlertTriangle,
   FiLoader,
 } from "react-icons/fi";
 import { uploadDocument } from "@/app/actions/upload";

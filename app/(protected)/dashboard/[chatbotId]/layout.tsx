@@ -17,7 +17,6 @@ import {
 } from "react-icons/fi";
 import { LiaRocketSolid } from "react-icons/lia";
 import { GrDocumentTest } from "react-icons/gr";
-import { RxRocket as FiRocket } from "react-icons/rx";
 import { UserButton, useUser, SignOutButton } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";

@@ -8,8 +8,6 @@ import {
   FiPlay,
   FiDownload,
   FiCheckCircle,
-  FiAlertTriangle,
-  FiXCircle,
   FiClock,
   FiDatabase,
   FiTarget,
@@ -141,6 +139,7 @@ export default function EvalPage({
             latency_ms: latency,
           });
         } catch (err) {
+          console.log("Error generating response for eval:", err);
           generatedDataset.push({
             question: tc.question,
             answer: "Exception while calling generateResponse",
@@ -231,7 +230,7 @@ export default function EvalPage({
     const performanceLabel = getPerformanceLabel(overallScore);
 
     // Simplified HTML template for brevity - logic remains the same
-    const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>RAG Evaluation Report</title><style>body{font-family:sans-serif;padding:20px;background:#f9fafb;color:#111827}.container{max-width:1000px;margin:0 auto;background:#fff;padding:40px;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)}h1{color:#4f46e5;margin-bottom:10px}.score-box{background:#f3f4f6;padding:20px;border-radius:8px;text-align:center;margin:20px 0}.score{font-size:48px;font-weight:bold;color:#4f46e5}.metric{margin-bottom:15px}.bar{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}.fill{height:100%;background:#4f46e5}.test-case{border:1px solid #e5e7eb;padding:15px;margin-bottom:15px;border-radius:8px}.label{font-weight:bold;color:#6b7280;font-size:12px;text-transform:uppercase}</style></head><body><div class="container"><h1>RAG Evaluation: ${chatbot.name}</h1><div class="score-box"><div class="score">${overallScore}%</div><div>${performanceLabel}</div></div><h2>Test Cases</h2>${dataset.map((row, i) => `<div class="test-case"><div class="label">Question</div><div>${row.question}</div><div class="label" style="margin-top:10px">Answer</div><div>${row.answer}</div><div class="label" style="margin-top:10px">Ground Truth</div><div style="color:#059669">${row.ground_truth}</div></div>`).join("")}</div></body></html>`;
+    const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>RAG Evaluation Report</title><style>body{font-family:sans-serif;padding:20px;background:#f9fafb;color:#111827}.container{max-width:1000px;margin:0 auto;background:#fff;padding:40px;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)}h1{color:#4f46e5;margin-bottom:10px}.score-box{background:#f3f4f6;padding:20px;border-radius:8px;text-align:center;margin:20px 0}.score{font-size:48px;font-weight:bold;color:#4f46e5}.metric{margin-bottom:15px}.bar{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}.fill{height:100%;background:#4f46e5}.test-case{border:1px solid #e5e7eb;padding:15px;margin-bottom:15px;border-radius:8px}.label{font-weight:bold;color:#6b7280;font-size:12px;text-transform:uppercase}</style></head><body><div class="container"><h1>RAG Evaluation: ${chatbot.name}</h1><div class="score-box"><div class="score">${overallScore}%</div><div>${performanceLabel}</div></div><h2>Test Cases</h2>${dataset.map((row) => `<div class="test-case"><div class="label">Question</div><div>${row.question}</div><div class="label" style="margin-top:10px">Answer</div><div>${row.answer}</div><div class="label" style="margin-top:10px">Ground Truth</div><div style="color:#059669">${row.ground_truth}</div></div>`).join("")}</div></body></html>`;
 
     const blob = new Blob([html], { type: "text/html" });
     const url = URL.createObjectURL(blob);

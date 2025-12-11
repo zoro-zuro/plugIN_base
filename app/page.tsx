@@ -7,7 +7,6 @@ import {
   Code,
   Shield,
   BarChart3,
-  CheckCircle2,
   Upload,
   Globe,
 } from "lucide-react";
@@ -44,8 +43,8 @@ export default function Home() {
             className="mx-auto max-w-2xl text-lg text-muted-foreground mb-12 leading-relaxed animate-slide-up"
             style={{ animationDelay: "0.1s" }}
           >
-            Let's you build custom AI agents trained on your data and plugin
-            them into any website in seconds. No coding required.
+            Let&apos;s you build custom AI agents trained on your data and
+            plugin them into any website in seconds. No coding required.
           </p>
 
           {/* CTA Buttons */}

@@ -90,7 +90,7 @@ export const generateResponse = async (
   }
 
   // ✅ Only check Clerk auth if namespace NOT provided
-  let finalNamespace = chatbot.namespace;
+  const finalNamespace = chatbot.namespace;
 
   if (!finalNamespace) {
     // const user = await currentUser();

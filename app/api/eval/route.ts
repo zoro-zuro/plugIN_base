@@ -235,7 +235,7 @@ function contextPR(
   }
 
   let relevantContexts = 0;
-  let coveredKeywords = new Set<string>();
+  const coveredKeywords = new Set<string>();
 
   for (const ctx of contexts) {
     const ctxTokens = new Set(uniqueKeywords(ctx));

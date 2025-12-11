@@ -96,8 +96,8 @@ export default function ManageChatbotsPage() {
                 No agents found
               </h2>
               <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-                You haven't created any chatbots yet. Build your first custom AI
-                agent in seconds.
+                You haven&apos;t created any chatbots yet. Build your first
+                custom AI agent in seconds.
               </p>
               <Link
                 href="/chatbot/create"

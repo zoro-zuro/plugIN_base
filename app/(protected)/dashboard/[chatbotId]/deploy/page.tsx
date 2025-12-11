@@ -9,7 +9,6 @@ import {
   FiExternalLink,
   FiCode,
   FiBox,
-  FiSmartphone,
   FiGlobe,
 } from "react-icons/fi";
 import { Zap } from "lucide-react";

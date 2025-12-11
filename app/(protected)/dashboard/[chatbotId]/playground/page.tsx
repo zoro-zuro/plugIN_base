@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, use } from "react";
-import { FiSend, FiLoader, FiRefreshCw, FiCpu } from "react-icons/fi";
+import { FiSend, FiRefreshCw, FiCpu } from "react-icons/fi";
 import { FaUser } from "react-icons/fa6";
 import { generateResponse } from "@/app/actions/message";
 import { useQuery } from "convex/react";
@@ -29,13 +29,8 @@ export default function PlaygroundPage({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -199,7 +194,7 @@ export default function PlaygroundPage({
               </h3>
               <p className="text-muted-foreground max-w-sm mx-auto text-sm leading-relaxed mb-8">
                 {chatbot.description ||
-                  "Start chatting to test your agent's responses and accuracy."}
+                  "Start chatting to test your agent&apos;s responses and accuracy."}
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
@@ -207,7 +202,7 @@ export default function PlaygroundPage({
                   "What is this document about?",
                   "Summarize the key points",
                   "Who is the author?",
-                  "Explain like I'm 5",
+                  "Explain like I&apos;m 5",
                 ].map((suggestion, i) => (
                   <button
                     key={i}

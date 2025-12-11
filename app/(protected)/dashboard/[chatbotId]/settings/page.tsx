@@ -6,7 +6,6 @@ import { api } from "@/convex/_generated/api";
 import toast, { Toaster } from "react-hot-toast";
 import {
   FiSave,
-  FiTrash2,
   FiAlertTriangle,
   FiInfo,
   FiZap,
@@ -356,7 +355,8 @@ export default function SettingsPage({
                   support bots to reduce hallucinations.
                 </li>
                 <li>
-                  Include "If unsure, say you don't know" in your System Prompt.
+                  Include "If unsure, say you don&apos;t know" in your System
+                  Prompt.
                 </li>
                 <li>Test changes in the Playground before saving.</li>
               </ul>

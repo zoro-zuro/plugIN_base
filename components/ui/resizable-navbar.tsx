@@ -194,7 +194,7 @@ export const MobileNavMenu = ({
   children,
   className,
   isOpen,
-  onClose,
+  onClose: _onClose, // ✅ FIX: Renamed to _onClose to ignore unused variable
 }: MobileNavMenuProps) => {
   return (
     <AnimatePresence>

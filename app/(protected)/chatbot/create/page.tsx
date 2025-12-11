@@ -48,7 +48,7 @@ export default function CreateChatbotPage() {
       // ✅ Get the chatbotId from the returned object
       const chatbot = result.chatbotId;
 
-      // ✅ Redirect to the new chatbot's dashboard
+      // ✅ Redirect to the new chatbot&apos;s dashboard
       router.push(`/dashboard/${chatbot}/playground`);
     } catch (err) {
       console.error("❌ Error creating chatbot:", err);
@@ -148,7 +148,7 @@ export default function CreateChatbotPage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                  You'll be redirected to the Training Dashboard.
+                  You&apos;ll be redirected to the Training Dashboard.
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />

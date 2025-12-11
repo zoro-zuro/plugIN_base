@@ -4,18 +4,12 @@ import {
   NavBody,
   NavItems,
   MobileNav,
-  NavbarButton,
   MobileNavHeader,
   MobileNavToggle,
   MobileNavMenu,
 } from "@/components/ui/resizable-navbar";
 import { useState, useEffect } from "react";
-import {
-  useUser,
-  SignInButton,
-  SignOutButton,
-  UserButton,
-} from "@clerk/nextjs";
+import { useUser, SignInButton, UserButton } from "@clerk/nextjs";
 import { FiSun, FiMoon } from "react-icons/fi";
 import { useTheme } from "../hooks/useTheme";
 import { Button } from "./Buttons";
@@ -46,7 +40,6 @@ export function Header() {
   const publicNavItems = [
     { name: "Features", link: "#features" },
     { name: "How it Works", link: "#how-it-works" },
-    { name: "Pricing", link: "#pricing" },
   ];
 
   const authenticatedNavItems = [
@@ -69,10 +62,8 @@ export function Header() {
         <NavBody className="flex justify-between items-center hidden md:flex max-w-7xl mx-auto px-6 h-16">
           {/* Left: PlugIN logo */}
           <button
-            onClick={() =>
-              isSignedIn ? router.push("/chatbot/manage") : router.push("/")
-            }
-            className="flex items-center gap-2 group"
+            onClick={() => router.push("/")}
+            className="flex items-center gap-2 group z-99"
           >
             {/* <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white font-bold shadow-lg shadow-violet-500/20 group-hover:shadow-violet-500/40 transition-all">
               P
@@ -103,7 +94,7 @@ export function Header() {
 
             {!isSignedIn ? (
               <SignInButton mode="modal">
-                <button className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-violet-500/25">
+                <button className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-violet-500/25 z-99">
                   Login
                 </button>
               </SignInButton>
