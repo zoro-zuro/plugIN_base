@@ -259,7 +259,7 @@ export default function DashboardClientLayout({
           {/* User Profile */}
           <div className="flex items-center justify-between gap-2 pl-1">
             <div className="flex items-center gap-3 overflow-hidden">
-              <div className="ring-2 ring-border rounded-full p-0.5 transition-transform hover:scale-105 cursor-pointer">
+              <div className="transition-transform hover:scale-105 cursor-pointer">
                 <UserButton
                   afterSignOutUrl="/"
                   appearance={{
@@ -272,9 +272,9 @@ export default function DashboardClientLayout({
                   <span className="text-xs font-bold text-foreground truncate leading-tight">
                     {user.fullName?.split(" ")[0] || "User"}
                   </span>
-                  <span className="text-[10px] text-muted-foreground truncate leading-tight">
+                  {/* <span className="text-[10px] text-muted-foreground truncate leading-tight">
                     Free Plan
-                  </span>
+                  </span> */}
                 </div>
               ) : (
                 <div className="w-20 h-8 bg-muted rounded animate-pulse" />
@@ -299,7 +299,7 @@ export default function DashboardClientLayout({
         <div className="h-16 md:hidden" />
 
         <div className="sticky top-0 h-6 bg-gradient-to-b from-background to-transparent z-10 pointer-events-none hidden md:block" />
-        <div className="px-4 md:px-8 max-w-7xl mx-auto pb-10">{children}</div>
+        <div className="px-4 md:px-8 max-w-7xl mx-auto">{children}</div>
       </main>
     </div>
   );

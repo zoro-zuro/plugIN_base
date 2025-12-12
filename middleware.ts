@@ -1,16 +1,32 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const isProtectedRoute = createRouteMatcher(["/server"]);
+const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/chatbot(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) await auth.protect();
+  const path = req.nextUrl.pathname;
+
+  // ✅ ADD THIS LOG
+  console.log("🔒 Middleware hit:", path);
+
+  // ✅ Skip embed routes completely
+  if (
+    path.startsWith("/embed") ||
+    path.startsWith("/api/embed") ||
+    path.startsWith("/api/chat")
+  ) {
+    console.log("✅ Skipping auth for:", path);
+    return;
+  }
+
+  if (isProtectedRoute(req)) {
+    console.log("🔐 Protecting route:", path);
+    await auth.protect();
+  }
 });
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
     "/(api|trpc)(.*)",
   ],
 };

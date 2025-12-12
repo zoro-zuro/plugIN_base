@@ -205,3 +205,32 @@
 html {
   scroll-behavior: smooth;
 }
+
+@layer utilities {
+  /* Chrome, Edge, and Safari */
+  ::-webkit-scrollbar {
+    width: 6px; /* Slightly thinner */
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    /* Use a darker/lighter thumb based on mode for visibility */
+    background-color: hsl(var(--foreground) / 0.2);
+    border-radius: 9999px; /* Pill shape */
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--foreground) / 0.4); /* Darker on hover */
+  }
+
+  /* Firefox */
+  * {
+    /* For Firefox, we use "auto" or "thin", but we can't fully control radius/transparency as easily */
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--foreground) / 0.2) transparent;
+  }
+}

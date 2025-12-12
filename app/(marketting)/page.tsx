@@ -1,17 +1,163 @@
+"use client";
+
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import {
   ArrowRight,
+  UploadCloud,
+  FileText,
+  Bot,
   MessageSquare,
-  Database,
   Zap,
+  Database,
   Code,
   Shield,
   BarChart3,
   Upload,
   Globe,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
+// --- ANIMATION COMPONENTS ---
+const UploadStep = () => (
+  <motion.div
+    key="upload-step"
+    initial={{ opacity: 0, scale: 0.9 }}
+    animate={{ opacity: 1, scale: 1 }}
+    exit={{ opacity: 0, scale: 0.9 }}
+    transition={{ duration: 0.5, ease: "easeOut" }}
+    className="flex flex-col items-center justify-center h-full text-center p-8 bg-gradient-to-br from-background to-muted/30"
+  >
+    <div className="w-24 h-24 rounded-3xl bg-primary/5 border-2 border-dashed border-primary/20 flex items-center justify-center mb-6 shadow-xl shadow-primary/5">
+      <UploadCloud className="h-10 w-10 text-primary animate-bounce" />
+    </div>
+    <h3 className="text-2xl font-bold text-foreground mb-2">
+      Upload your knowledge
+    </h3>
+    <p className="text-muted-foreground max-w-sm">
+      Drag & drop PDFs, Docs, or connect your Notion & website sitemaps
+      instantly.
+    </p>
+  </motion.div>
+);
+
+const ProcessingStep = () => (
+  <motion.div
+    key="processing-step"
+    initial={{ opacity: 0, scale: 0.9 }}
+    animate={{ opacity: 1, scale: 1 }}
+    exit={{ opacity: 0, scale: 0.9 }}
+    transition={{ duration: 0.5, ease: "easeOut" }}
+    className="flex flex-col items-center justify-center h-full text-center p-8 bg-gradient-to-br from-background to-muted/30"
+  >
+    <div className="relative w-28 h-28 flex items-center justify-center mb-8">
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
+        className="absolute inset-0 border-4 border-dashed border-primary/20 rounded-full"
+      />
+      <motion.div
+        animate={{ rotate: -360 }}
+        transition={{ repeat: Infinity, duration: 12, ease: "linear" }}
+        className="absolute inset-3 border-2 border-dashed border-fuchsia-500/20 rounded-full"
+      />
+      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center shadow-inner">
+        <Database className="h-8 w-8 text-primary" />
+      </div>
+    </div>
+    <h3 className="text-2xl font-bold text-foreground mb-2">
+      Training your AI Agent...
+    </h3>
+    <p className="text-muted-foreground max-w-sm mb-6">
+      Chunking data, generating vectors, and optimizing for semantic search.
+    </p>
+    <div className="w-64 h-2 bg-muted rounded-full overflow-hidden">
+      <motion.div
+        initial={{ width: 0 }}
+        animate={{ width: "100%" }}
+        transition={{ duration: 3.5, ease: "easeInOut" }}
+        className="h-full bg-gradient-to-r from-primary to-fuchsia-500"
+      />
+    </div>
+  </motion.div>
+);
+
+const ReadyStep = () => (
+  <motion.div
+    key="ready-step"
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -20 }}
+    transition={{ duration: 0.5 }}
+    className="flex flex-col h-full bg-card/50"
+  >
+    {/* Chat Header */}
+    <div className="px-6 py-4 border-b border-border bg-card/80 backdrop-blur flex items-center gap-4">
+      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-fuchsia-600 flex items-center justify-center text-white shadow-lg shadow-primary/20">
+        <Bot size={20} />
+      </div>
+      <div>
+        <p className="font-bold text-foreground">Custom Assistant</p>
+        <div className="flex items-center gap-1.5">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span className="text-xs font-medium text-emerald-500">
+            Online & Ready
+          </span>
+        </div>
+      </div>
+    </div>
+
+    {/* Chat Area */}
+    <div className="flex-1 p-6 space-y-6 overflow-hidden flex flex-col justify-end">
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.3 }}
+        className="flex gap-4"
+      >
+        <div className="w-8 h-8 rounded-full bg-muted flex-shrink-0 flex items-center justify-center">
+          <span className="text-xs font-bold text-muted-foreground">U</span>
+        </div>
+        <div className="p-4 rounded-2xl rounded-tl-none bg-muted/80 text-sm text-foreground max-w-[80%]">
+          What is the return policy for international orders?
+        </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 1 }}
+        className="flex gap-4 flex-row-reverse"
+      >
+        <div className="w-8 h-8 rounded-full bg-primary/10 flex-shrink-0 flex items-center justify-center">
+          <Bot size={14} className="text-primary" />
+        </div>
+        <div className="p-4 rounded-2xl rounded-tr-none bg-primary text-primary-foreground text-sm shadow-md shadow-primary/10 max-w-[85%]">
+          International orders can be returned within 30 days of delivery.
+          Original shipping costs are non-refundable, and return shipping fees
+          apply.
+        </div>
+      </motion.div>
+    </div>
+  </motion.div>
+);
+
+// --- MAIN PAGE COMPONENT ---
 export default function Home() {
+  const [step, setStep] = useState(0);
+  // Cycle order: Upload -> Process -> Chat
+  const steps = ["upload", "processing", "ready"];
+
+  useEffect(() => {
+    const sequence = setInterval(() => {
+      setStep((prev) => (prev + 1) % steps.length);
+    }, 4500); // Change step every 4.5 seconds
+    return () => clearInterval(sequence);
+  }, [steps.length]);
+
   return (
     <div className="flex flex-col min-h-screen overflow-hidden">
       {/* HERO SECTION */}
@@ -22,16 +168,16 @@ export default function Home() {
 
         <div className="mx-auto max-w-7xl px-6 text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary mb-8 animate-fade-in backdrop-blur-sm">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary mb-8 animate-fade-in backdrop-blur-sm hover:bg-primary/10 transition-colors cursor-default">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
             </span>
-            <span>Docs in. Chatbot out</span>
+            <span>Docs in. Chatbot out.</span>
           </div>
 
           {/* Main Headline */}
-          <h1 className="mx-auto max-w-5xl text-4xl font-extrabold tracking-tight text-foreground sm:text-7xl mb-8 animate-slide-up">
+          <h1 className="mx-auto max-w-5xl text-4xl font-extrabold tracking-tight text-foreground sm:text-7xl mb-8 animate-slide-up leading-tight">
             Train a chatbot on your files <br className="hidden sm:block" />
             <span className="gradient-text">
               then plug it into your website.
@@ -42,8 +188,8 @@ export default function Home() {
             className="mx-auto max-w-2xl text-lg text-muted-foreground mb-12 leading-relaxed animate-slide-up"
             style={{ animationDelay: "0.1s" }}
           >
-            Let&apos;s you build custom AI agents trained on your data and
-            plugin them into any website in seconds. No coding required.
+            Build custom AI agents trained on your data and plugin them into any
+            website in seconds. No coding required.
           </p>
 
           {/* CTA Buttons */}
@@ -59,90 +205,52 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Hero Visual / Mockup */}
+          {/* HERO ANIMATED VISUAL */}
           <div
-            className="relative mx-auto max-w-5xl animate-slide-up"
+            className="relative mx-auto max-w-3xl animate-slide-up"
             style={{ animationDelay: "0.3s" }}
           >
-            <div className="relative rounded-2xl border border-border bg-card/50 backdrop-blur-xl p-2 shadow-2xl shadow-primary/10">
-              <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-fuchsia-500/5 rounded-2xl" />
-
-              {/* Fake UI for Dashboard Preview */}
-              <div className="aspect-[16/9] w-full rounded-xl bg-muted/50 border border-border overflow-hidden relative group">
-                {/* Abstract Data Visualization */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center space-y-4">
-                    <div className="flex justify-center gap-4">
-                      <div className="h-16 w-16 rounded-2xl bg-white dark:bg-slate-800 shadow-lg flex items-center justify-center border border-border animate-float">
-                        <Database className="h-8 w-8 text-primary" />
-                      </div>
-                      <div className="flex items-center text-muted-foreground">
-                        <span className="h-0.5 w-12 bg-border relative overflow-hidden">
-                          <span className="absolute inset-0 bg-primary w-1/2 animate-[shimmer_2s_infinite]"></span>
-                        </span>
-                      </div>
-                      <div
-                        className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-fuchsia-600 shadow-lg flex items-center justify-center text-white animate-float"
-                        style={{ animationDelay: "1s" }}
-                      >
-                        <Zap className="h-8 w-8" />
-                      </div>
-                    </div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Processing Knowledge Base...
-                    </p>
-                  </div>
+            <div className="absolute -inset-1 bg-gradient-to-r from-primary to-fuchsia-600 rounded-[2rem] blur opacity-20" />
+            <div className="relative rounded-[1.75rem] border border-border bg-card/80 backdrop-blur-xl p-3 shadow-2xl">
+              {/* Browser Header Fake */}
+              <div className="absolute top-0 left-0 right-0 h-12 bg-muted/50 rounded-t-[1.5rem] border-b border-border flex items-center px-4 gap-2">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-red-400/80" />
+                  <div className="w-3 h-3 rounded-full bg-amber-400/80" />
+                  <div className="w-3 h-3 rounded-full bg-emerald-400/80" />
+                </div>
+                <div className="mx-auto text-[10px] font-mono text-muted-foreground opacity-50">
+                  pluginbase.ai/demo
                 </div>
               </div>
 
-              {/* Floating Chat Element */}
-              <div className="absolute -bottom-12 -right-4 md:-right-12 hidden md:block animate-float">
-                <div className="w-80 rounded-2xl border border-border bg-card p-4 shadow-2xl shadow-black/5 dark:shadow-black/20">
-                  <div className="flex items-center gap-3 border-b border-border pb-3 mb-3">
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                      <MessageSquare className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-foreground">
-                        Assistant
-                      </div>
-                      <div className="text-xs text-emerald-500 flex items-center gap-1">
-                        ● Online
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="self-start rounded-2xl rounded-tl-none bg-muted px-4 py-2 text-sm text-muted-foreground w-3/4">
-                      How can I integrate this?
-                    </div>
-                    <div className="self-end rounded-2xl rounded-tr-none bg-primary px-4 py-2 text-sm text-primary-foreground w-3/4 ml-auto shadow-md shadow-primary/20">
-                      Just copy the embed code and paste it into your
-                      `index.html`. It takes 30 seconds!
-                    </div>
-                  </div>
-                </div>
+              {/* Animation Container */}
+              <div className="mt-12 aspect-[16/10] w-full bg-background rounded-xl overflow-hidden relative">
+                <AnimatePresence mode="wait">
+                  {steps[step] === "upload" && <UploadStep />}
+                  {steps[step] === "processing" && <ProcessingStep />}
+                  {steps[step] === "ready" && <ReadyStep />}
+                </AnimatePresence>
+              </div>
+
+              {/* Step Indicators */}
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+                {steps.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setStep(i)}
+                    className={`h-1.5 rounded-full transition-all duration-500 ${
+                      step === i
+                        ? "w-8 bg-primary"
+                        : "w-1.5 bg-primary/20 hover:bg-primary/40"
+                    }`}
+                  />
+                ))}
               </div>
             </div>
           </div>
         </div>
       </section>
-
-      {/* TRUSTED BY */}
-      {/* <section className="py-10 border-y border-border bg-secondary/30">
-        <div className="mx-auto max-w-7xl px-6 text-center">
-          <p className="text-sm font-semibold tracking-wider text-muted-foreground mb-8 uppercase">
-            Trusted by forward-thinking teams
-          </p>
-          <div className="flex flex-wrap justify-center items-center gap-12 opacity-60 grayscale hover:grayscale-0 transition-all duration-500"> */}
-      {/* Replace these divs with actual SVGs of logos */}
-      {/* <div className="h-8 w-24 bg-foreground/20 rounded animate-pulse" />
-            <div className="h-8 w-24 bg-foreground/20 rounded animate-pulse delay-75" />
-            <div className="h-8 w-24 bg-foreground/20 rounded animate-pulse delay-150" />
-            <div className="h-8 w-24 bg-foreground/20 rounded animate-pulse delay-200" />
-            <div className="h-8 w-24 bg-foreground/20 rounded animate-pulse delay-300" />
-          </div>
-        </div>
-      </section> */}
 
       {/* HOW IT WORKS (Gifo Style Flow) */}
       <section
@@ -287,7 +395,7 @@ export default function Home() {
               </h2>
               <p className="mx-auto max-w-xl text-lg text-background/70 mb-10">
                 Join thousands of developers building the future of
-                conversational AI with Plugin_base.
+                conversational AI with PluginBase.
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-4">
                 <Link
@@ -301,6 +409,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+
       {/* FOOTER */}
       <footer className="border-t border-border bg-card pt-16 pb-8">
         <div className="mx-auto max-w-7xl px-6 flex flex-col md:flex-row justify-between items-center gap-8">
@@ -310,7 +419,7 @@ export default function Home() {
                 P
               </div>
               <span className="font-bold text-foreground text-lg">
-                Plugin_base
+                PluginBase
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
