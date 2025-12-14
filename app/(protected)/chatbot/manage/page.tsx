@@ -1,7 +1,7 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Link from "next/link";
 import {
@@ -10,15 +10,18 @@ import {
   FiCode,
   FiMessageSquare,
   FiFileText,
+  FiTrash2,
+  FiLoader,
 } from "react-icons/fi";
 import { Zap } from "lucide-react";
+import { Doc, Id } from "@/convex/_generated/dataModel";
+import { useState } from "react";
+import toast, { Toaster } from "react-hot-toast";
 
 function ChatbotTotalChats({ chatId }: { chatId: string }) {
   const total = useQuery(api.analytics.getTotalChats, {
     chatbotId: chatId,
   });
-
-  // render whatever you need using total
   return <span>{total ?? 0}</span>;
 }
 
@@ -28,6 +31,31 @@ export default function ManageChatbotsPage() {
     api.documents.getChatbotsByUserId,
     user?.id ? { userId: user.id } : "skip",
   );
+  const deleteChatbot = useMutation(api.documents.deleteChatbot);
+
+  // Track deleting state by ID
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (chatbot: Doc<"chatbots">) => {
+    if (!chatbot) return;
+
+    const confirmed = confirm(
+      `Are you sure you want to delete "${chatbot.name}"? This action cannot be undone.`,
+    );
+
+    if (!confirmed) return;
+
+    setDeletingId(chatbot._id); // Start loading for this specific bot
+    try {
+      await deleteChatbot({ id: chatbot._id });
+      toast.success("Chatbot deleted");
+    } catch (error) {
+      toast.error("Failed to delete chatbot");
+      console.error(error);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   if (!user) {
     return (
@@ -42,6 +70,7 @@ export default function ManageChatbotsPage() {
 
   return (
     <div className="min-h-screen mt-15 py-10 px-4 bg-background relative overflow-hidden">
+      <Toaster position="top-right" />
       {/* Background Decor */}
       <div className="fixed top-20 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
 
@@ -61,7 +90,7 @@ export default function ManageChatbotsPage() {
             className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 transition-all flex items-center gap-2 group"
           >
             <FiPlus className="group-hover:rotate-90 transition-transform" />
-            Create New chatbot
+            Create New Chatbot
           </Link>
         </div>
 
@@ -114,21 +143,32 @@ export default function ManageChatbotsPage() {
             {chatbots.map((chatbot) => (
               <div
                 key={chatbot._id}
-                className="group bg-card border border-border rounded-2xl p-6 hover:shadow-2xl hover:shadow-primary/5 hover:border-primary/20 transition-all duration-300 flex flex-col h-full"
+                className="group bg-card border border-border rounded-2xl p-6 hover:shadow-2xl hover:shadow-primary/5 hover:border-primary/20 transition-all duration-300 flex flex-col h-full relative"
               >
+                {/* Delete Button (Absolute Top Right) */}
+                <button
+                  onClick={() => handleDelete(chatbot)}
+                  disabled={deletingId === chatbot._id}
+                  className="absolute top-4 right-4 p-2 text-muted-foreground/50 hover:text-destructive bg-accent hover:bg-destructive/10 rounded-full transition-all hover:scale-110 hover:cursor-pointer"
+                  title="Delete Chatbot"
+                >
+                  {deletingId === chatbot._id ? (
+                    <FiLoader className="animate-spin" />
+                  ) : (
+                    <FiTrash2 size={18} />
+                  )}
+                </button>
+
                 {/* Chatbot Info */}
                 <div className="mb-6 flex-1">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary to-fuchsia-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-fuchsia-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-primary/20">
                       {chatbot.name.charAt(0).toUpperCase()}
                     </div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground bg-muted px-2 py-1 rounded">
-                      {chatbot.chatbotId.slice(0, 8)}
-                    </span>
                   </div>
 
                   <h3
-                    className="text-xl font-bold mb-2 text-foreground truncate"
+                    className="text-xl font-bold mb-2 text-foreground truncate pr-8"
                     title={chatbot.name}
                   >
                     {chatbot.name}
@@ -166,7 +206,6 @@ export default function ManageChatbotsPage() {
 
                 {/* Actions */}
                 <div className="flex gap-3 mt-auto">
-                  {/* ✅ Open Dashboard */}
                   <Link
                     href={`/dashboard/${chatbot.chatbotId}/playground`}
                     className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20"
@@ -175,7 +214,6 @@ export default function ManageChatbotsPage() {
                     Open
                   </Link>
 
-                  {/* ✅ Get Embed Code */}
                   <Link
                     href={`/dashboard/${chatbot.chatbotId}/deploy`}
                     className="flex-1 px-4 py-2.5 bg-card border border-border text-foreground hover:bg-secondary rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:border-primary/30"
@@ -184,18 +222,6 @@ export default function ManageChatbotsPage() {
                     Embed
                   </Link>
                 </div>
-
-                {/* Website URL */}
-                {chatbot.websiteUrl && (
-                  <a
-                    href={chatbot.websiteUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-4 block text-center text-xs text-muted-foreground hover:text-primary transition-colors truncate px-2"
-                  >
-                    {chatbot.websiteUrl}
-                  </a>
-                )}
               </div>
             ))}
           </div>

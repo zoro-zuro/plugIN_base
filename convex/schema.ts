@@ -5,6 +5,7 @@ export default defineSchema({
   documents: defineTable({
     userId: v.string(),
     fileName: v.string(),
+    fileDescription: v.optional(v.string()), // ✅ Added description to document record
     fileSize: v.number(),
     fileType: v.string(),
     storageId: v.id("_storage"),
@@ -44,6 +45,16 @@ export default defineSchema({
     // Stats
     totalMessages: v.optional(v.number()),
     totalDocuments: v.optional(v.number()),
+
+    // ✅ UPDATED: Structured array for descriptions
+    DocwithDescriptions: v.optional(
+      v.array(
+        v.object({
+          fileName: v.string(),
+          fileDescription: v.string(),
+        }),
+      ),
+    ),
 
     // AI Configuration
     systemPrompt: v.optional(v.string()),

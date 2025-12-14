@@ -551,7 +551,8 @@ export default function ActivityPage({
                         <div key={item.country} className="group">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium text-foreground flex items-center gap-2">
-                              <span className="text-lg">🌍</span> {item.country}
+                              <span className="w-2 h-2 rounded-full bg-muted-foreground"></span>{" "}
+                              {item.country}
                             </span>
                             <span className="text-sm font-bold text-muted-foreground group-hover:text-primary transition-colors">
                               {item.count}

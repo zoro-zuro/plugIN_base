@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use, useEffect } from "react";
+import { useState, use, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import toast, { Toaster } from "react-hot-toast";
@@ -15,6 +15,8 @@ import {
   FiCpu,
   FiSliders,
   FiLoader,
+  FiChevronDown,
+  FiCheck,
 } from "react-icons/fi";
 import { useRouter } from "next/navigation";
 
@@ -128,6 +130,18 @@ export default function SettingsPage({
     <div className="flex flex-col h-screen bg-background relative overflow-hidden">
       <Toaster position="top-right" />
 
+      {/* CSS to hide number input spinners */}
+      <style jsx global>{`
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type="number"] {
+          -moz-appearance: textfield;
+        }
+      `}</style>
+
       {/* Header */}
       <div className="border-b border-border bg-card/80 backdrop-blur-md px-8 py-6 sticky top-0 z-10">
         <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
@@ -187,21 +201,6 @@ export default function SettingsPage({
                 multiline
                 rows={2}
               />
-
-              <div className="bg-muted/50 border border-border rounded-xl p-4 text-xs font-mono space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Agent ID</span>
-                  <span className="text-foreground select-all">
-                    {chatbot.chatbotId}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Namespace</span>
-                  <span className="text-foreground select-all">
-                    {chatbot.namespace}
-                  </span>
-                </div>
-              </div>
             </div>
           </Section>
 
@@ -261,7 +260,23 @@ export default function SettingsPage({
                 step={0.1}
                 helperText="0 = Factual & Precise, 1 = Creative & Unpredictable"
               />
+              <InputField
+                label="Welcome Greeting"
+                value={formData.welcomeMessage}
+                onChange={(value) =>
+                  setFormData({ ...formData, welcomeMessage: value })
+                }
+                placeholder="Hi! How can I help you today?"
+              />
 
+              <InputField
+                label="Fallback Error Message"
+                value={formData.errorMessage}
+                onChange={(value) =>
+                  setFormData({ ...formData, errorMessage: value })
+                }
+                placeholder="Sorry, I encountered an issue..."
+              />
               <InputField
                 label="System Prompt"
                 value={formData.systemPrompt}
@@ -277,7 +292,7 @@ export default function SettingsPage({
           </Section>
 
           {/* Conversation Settings */}
-          <Section
+          {/* <Section
             icon={<FiMessageSquare />}
             title="Chat Experience"
             description="Customize the user-facing messages and localization."
@@ -338,30 +353,7 @@ export default function SettingsPage({
                 placeholder="Sorry, I encountered an issue..."
               />
             </div>
-          </Section>
-
-          {/* Tips Box */}
-          <div className="bg-primary/5 border border-primary/10 rounded-xl p-5 flex gap-4">
-            <div className="p-2 bg-primary/10 rounded-lg h-fit text-primary">
-              <FiZap size={20} />
-            </div>
-            <div>
-              <h4 className="font-semibold text-foreground mb-1">
-                Pro Tips for Accuracy
-              </h4>
-              <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                <li>
-                  Set temperature to <strong>0.1 - 0.3</strong> for customer
-                  support bots to reduce hallucinations.
-                </li>
-                <li>
-                  Include "If unsure, say you don&apos;t know" in your System
-                  Prompt.
-                </li>
-                <li>Test changes in the Playground before saving.</li>
-              </ul>
-            </div>
-          </div>
+          </Section> */}
 
           {/* Danger Zone */}
           <div className="border border-destructive/20 bg-destructive/5 rounded-xl p-6">
@@ -419,7 +411,7 @@ export default function SettingsPage({
   );
 }
 
-// Reusable Components
+// --- REUSABLE COMPONENTS ---
 
 function Section({
   icon,
@@ -495,6 +487,7 @@ function InputField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
+          // The global style tag above handles the 'no-spinner' look for type="number"
           className="w-full px-4 py-3 bg-muted/30 border border-input rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
         />
       )}
@@ -507,6 +500,9 @@ function InputField({
   );
 }
 
+/**
+ * CUSTOM SELECT COMPONENT (FIXED BACKGROUND)
+ */
 function SelectField({
   label,
   value,
@@ -520,30 +516,80 @@ function SelectField({
   options: { value: string; label: string }[];
   icon?: React.ReactNode;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedLabel =
+    options.find((option) => option.value === value)?.label || value;
+
   return (
-    <div className="w-full">
+    <div className="w-full relative" ref={dropdownRef}>
       <label className="block text-sm font-medium text-foreground mb-2 flex justify-between">
         <span>{label}</span>
         {icon && (
           <span className="text-muted-foreground opacity-50">{icon}</span>
         )}
       </label>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full pl-4 pr-10 py-3 appearance-none bg-muted/30 border border-input rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all cursor-pointer hover:bg-muted/50"
-        >
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-          <FiSliders size={14} />
+
+      {/* Trigger Button */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between px-4 py-3 bg-muted/30 border rounded-xl text-foreground transition-all hover:bg-muted/50 ${
+          isOpen ? "border-primary ring-2 ring-primary/20" : "border-input"
+        }`}
+      >
+        <span className="truncate">{selectedLabel}</span>
+        <FiChevronDown
+          className={`text-muted-foreground transition-transform duration-200 ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Menu - FIXED BG COLOR */}
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-2 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+          <ul className="max-h-60 overflow-y-auto py-1">
+            {options.map((option) => {
+              const isSelected = option.value === value;
+              return (
+                <li key={option.value}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(option.value);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors ${
+                      isSelected
+                        ? "bg-primary/20 text-primary font-bold"
+                        : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                    }`}
+                  >
+                    <span>{option.label}</span>
+                    {isSelected && <FiCheck size={16} />}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </div>
-      </div>
+      )}
     </div>
   );
 }

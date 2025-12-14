@@ -7,12 +7,13 @@ export class KnowledgeBaseTool extends Tool {
   name = "knowledge_base_search";
   description = `Search through the user's knowledge base and uploaded documents.
 Use this tool when:
-- You cannot answer the question from conversation history
-- The user asks about specific data, files, or information they uploaded
-- You need to retrieve factual information from their documents
+- The user asks about specific data, files, policies, or information stored in documents.
+- You need factual information to answer the question.
+
 Do NOT use this for:
-- General knowledge questions you can answer directly
-- Questions already answered in recent conversation
+- "Hi", "Hello", "Bye", "Thanks" (Standard greetings/closings).
+- General chitchat or questions clearly not about the company data.
+
 Input should be a clear search query describing what information is needed.`;
 
   private namespace?: string;
@@ -37,8 +38,6 @@ Input should be a clear search query describing what information is needed.`;
         searchKwargs: {
           lambda: 0.7, // 0.7 relevance / 0.3 diversity
         },
-        // Optional: if you store namespace or userId in metadata, you can filter:
-        // filter: this.namespace ? { namespace: this.namespace } : undefined,
       });
 
       const docs = await retriever.invoke(query);

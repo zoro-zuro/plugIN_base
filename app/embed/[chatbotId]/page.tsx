@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, use } from "react";
 import { FiSend, FiLoader, FiThumbsUp, FiThumbsDown } from "react-icons/fi";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import Link from "next/link";
 
 // ✅ Updated Message type to include feedback
 type Message = {
@@ -395,7 +396,9 @@ export default function EmbedChatWidget({
         </div>
         <div className="text-[10px] text-slate-400 text-center mt-2 flex items-center justify-center gap-1">
           Powered by{" "}
-          <span className="font-semibold text-slate-500">AutoRAG</span>
+          <Link href="/" target="_blank">
+            <span className="font-semibold gradient-text">PlugIn</span>
+          </Link>
         </div>
       </div>
     </div>

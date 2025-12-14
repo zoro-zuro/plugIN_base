@@ -31,7 +31,8 @@ export const createChatbot = mutation({
       updatedAt: Date.now(),
       totalMessages: 0,
       totalDocuments: 0,
-      // ✅ Initialize new fields with defaults
+      DocwithDescriptions: [], // Initialize empty list
+      // Initialize new fields with defaults
       systemPrompt: undefined,
       temperature: 0.5,
       modelName: "llama-3.1-8b-instant",
@@ -79,6 +80,7 @@ export const checkChatbotOwnership = query({
     return true;
   },
 });
+
 // Get single chatbot by ID
 export const getChatbotById = query({
   args: { chatbotId: v.string() },
@@ -101,7 +103,7 @@ export const getChatbotByNamespace = query({
   },
 });
 
-// ✅ FIXED: Update chatbot with ALL new fields
+// Update chatbot with ALL new fields
 export const updateChatbot = mutation({
   args: {
     id: v.id("chatbots"),
@@ -110,7 +112,7 @@ export const updateChatbot = mutation({
     websiteUrl: v.optional(v.string()),
     totalMessages: v.optional(v.number()),
     totalDocuments: v.optional(v.number()),
-    // ✅ Add all new settings fields
+    // Add all new settings fields
     systemPrompt: v.optional(v.string()),
     temperature: v.optional(v.number()),
     modelName: v.optional(v.string()),
@@ -136,7 +138,7 @@ export const updateChatbot = mutation({
 export const deleteChatbot = mutation({
   args: { id: v.id("chatbots") },
   handler: async (ctx, args) => {
-    // ✅ Also delete associated documents
+    // Also delete associated documents
     const chatbot = await ctx.db.get(args.id);
     if (chatbot) {
       // Delete all documents for this chatbot
@@ -201,7 +203,7 @@ export const generateUploadUrl = mutation(async (ctx) => {
   return await ctx.storage.generateUploadUrl();
 });
 
-// Save document metadata after upload
+// ✅ UPDATED: Save document metadata AND update chatbot description list
 export const saveDocument = mutation({
   args: {
     userId: v.string(),
@@ -211,6 +213,8 @@ export const saveDocument = mutation({
     storageId: v.id("_storage"),
     chunksCount: v.number(),
     namespace: v.string(),
+    // Made description mandatory for this flow
+    fileDescription: v.string(),
   },
   handler: async (ctx, args) => {
     const documentId = await ctx.db.insert("documents", {
@@ -219,15 +223,26 @@ export const saveDocument = mutation({
       status: "completed",
     });
 
-    // ✅ Update chatbot document count
+    // Find the associated chatbot
     const chatbot = await ctx.db
       .query("chatbots")
       .withIndex("by_namespace", (q) => q.eq("namespace", args.namespace))
       .first();
 
     if (chatbot) {
+      // Prepare the new description object
+      const newDocEntry = {
+        fileName: args.fileName,
+        fileDescription: args.fileDescription,
+      };
+
+      // Get existing list, or start fresh
+      const currentDescriptions = chatbot.DocwithDescriptions || [];
+
+      // Update chatbot with new count and new description list
       await ctx.db.patch(chatbot._id, {
         totalDocuments: (chatbot.totalDocuments || 0) + 1,
+        DocwithDescriptions: [...currentDescriptions, newDocEntry],
         updatedAt: Date.now(),
       });
     }
@@ -262,6 +277,20 @@ export const getDocumentsByNamespace = query({
   },
 });
 
+// update document with description
+export const updateDocumentDescription = mutation({
+  args: {
+    documentId: v.id("documents"),
+    fileDescription: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.documentId, {
+      fileDescription: args.fileDescription,
+    });
+    return { success: true };
+  },
+});
+
 // Get file URL from storage
 export const getFileUrl = query({
   args: {
@@ -272,7 +301,7 @@ export const getFileUrl = query({
   },
 });
 
-// Delete document
+// ✅ UPDATED: Delete document AND remove from chatbot description list
 export const deleteDocument = mutation({
   args: {
     documentId: v.id("documents"),
@@ -286,20 +315,26 @@ export const deleteDocument = mutation({
         await ctx.storage.delete(doc.storageId);
       }
 
-      // ✅ Update chatbot document count
+      // Update chatbot document count and remove from description list
       const chatbot = await ctx.db
         .query("chatbots")
         .withIndex("by_namespace", (q) => q.eq("namespace", doc.namespace))
         .first();
 
-      if (chatbot && chatbot.totalDocuments && chatbot.totalDocuments > 0) {
+      if (chatbot) {
+        // Filter out the deleted file from the list
+        const updatedDescriptions = (chatbot.DocwithDescriptions || []).filter(
+          (entry) => entry.fileName !== doc.fileName,
+        );
+
         await ctx.db.patch(chatbot._id, {
-          totalDocuments: chatbot.totalDocuments - 1,
+          totalDocuments: Math.max((chatbot.totalDocuments || 1) - 1, 0),
+          DocwithDescriptions: updatedDescriptions,
           updatedAt: Date.now(),
         });
       }
 
-      // Delete document
+      // Delete document record
       await ctx.db.delete(args.documentId);
     }
 
@@ -322,12 +357,11 @@ export const deleteAllUserDocuments = mutation({
       }
       await ctx.db.delete(doc._id);
     }
-
     return docs.length;
   },
 });
 
-// Delete all documents for a namespace (for specific chatbot)
+// ✅ UPDATED: Delete all documents for namespace AND clear description list
 export const deleteAllNamespaceDocuments = mutation({
   args: { namespace: v.string() },
   handler: async (ctx, args) => {
@@ -343,7 +377,7 @@ export const deleteAllNamespaceDocuments = mutation({
       await ctx.db.delete(doc._id);
     }
 
-    // ✅ Update chatbot document count
+    // Reset chatbot document stats
     const chatbot = await ctx.db
       .query("chatbots")
       .withIndex("by_namespace", (q) => q.eq("namespace", args.namespace))
@@ -352,6 +386,7 @@ export const deleteAllNamespaceDocuments = mutation({
     if (chatbot) {
       await ctx.db.patch(chatbot._id, {
         totalDocuments: 0,
+        DocwithDescriptions: [], // Clear the list
         updatedAt: Date.now(),
       });
     }
