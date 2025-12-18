@@ -33,7 +33,7 @@ export async function deletePineconeVectors(
 
     // 1) query to find vector ids for this documentId
     const queryRes = await index.query({
-      vector: new Array(1024).fill(0),
+      vector: new Array(768).fill(0),
       topK: 500,
       includeMetadata: true,
       filter: {

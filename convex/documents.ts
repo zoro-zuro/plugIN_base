@@ -394,3 +394,57 @@ export const deleteAllNamespaceDocuments = mutation({
     return docs.length;
   },
 });
+
+export const updateChunkCount = mutation({
+  args: { documentId: v.id("documents"), chunksCount: v.number() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.documentId, { chunksCount: args.chunksCount });
+  },
+});
+
+// ✅ NEW MUTATION to replace saving to the 'documents' table
+export const addDocumentDescriptionToChatbot = mutation({
+  args: {
+    chatbotId: v.string(),
+    fileName: v.string(),
+    fileDescription: v.string(),
+    fileSize: v.number(),
+    chunksCount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const chatbot = await ctx.db
+      .query("chatbots")
+      .withIndex("by_chatbotId", (q) => q.eq("chatbotId", args.chatbotId))
+      .first();
+
+    if (!chatbot) {
+      console.error("Chatbot not found for description update");
+      return;
+    }
+
+    const newDocEntry = {
+      fileName: args.fileName,
+      fileDescription: args.fileDescription,
+      fileSize: args.fileSize,
+      chunksCount: args.chunksCount,
+    };
+
+    const currentDescriptions = chatbot.DocwithDescriptions || [];
+
+    // Optional: Prevent duplicates
+    const existingIndex = currentDescriptions.findIndex(
+      (d) => d.fileName === args.fileName,
+    );
+    if (existingIndex !== -1) {
+      currentDescriptions[existingIndex] = newDocEntry;
+    } else {
+      currentDescriptions.push(newDocEntry);
+    }
+
+    await ctx.db.patch(chatbot._id, {
+      totalDocuments: (chatbot.totalDocuments || 0) + 1,
+      DocwithDescriptions: currentDescriptions,
+      updatedAt: Date.now(),
+    });
+  },
+});

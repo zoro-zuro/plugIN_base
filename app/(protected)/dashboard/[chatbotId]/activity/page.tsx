@@ -460,15 +460,26 @@ export default function ActivityPage({
 
               {/* Chart Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Main Area Chart */}
+                {/* ... inside the Chart Grid div ... */}
                 <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-6 shadow-sm">
-                  <h3 className="text-lg font-bold text-foreground mb-6 flex items-center gap-2">
-                    <FiBarChart2 className="text-primary" /> Volume Trends
-                  </h3>
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                      <FiBarChart2 className="text-primary" /> Volume Trends
+                    </h3>
+                    {/* Add a simple legend/context if needed */}
+                    <span className="text-xs text-muted-foreground">
+                      Chats per hour (
+                      {timeRange === "today" ? "24h" : timeRange})
+                    </span>
+                  </div>
+
                   {analytics.hourlyChats?.length > 0 ? (
                     <div className="h-[350px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={analytics.hourlyChats}>
+                        <AreaChart
+                          data={analytics.hourlyChats}
+                          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                        >
                           <defs>
                             <linearGradient
                               id="colorChats"
@@ -493,6 +504,7 @@ export default function ActivityPage({
                             strokeDasharray="3 3"
                             stroke="hsl(var(--border))"
                             vertical={false}
+                            opacity={0.4}
                           />
                           <XAxis
                             dataKey="hour"
@@ -501,6 +513,16 @@ export default function ActivityPage({
                             tickLine={false}
                             axisLine={false}
                             dy={10}
+                            // ✅ IMPROVEMENT: Format the tick labels to be readable (e.g., 14:00 -> 2 PM)
+                            tickFormatter={(value) => {
+                              const hour = parseInt(value.split(":")[0]);
+                              if (isNaN(hour)) return value;
+                              const ampm = hour >= 12 ? "PM" : "AM";
+                              const h = hour % 12 || 12;
+                              return `${h} ${ampm}`;
+                            }}
+                            // ✅ Reduce tick count to avoid clutter (show every 4th tick)
+                            interval={3}
                           />
                           <YAxis
                             stroke="hsl(var(--muted-foreground))"
@@ -508,26 +530,44 @@ export default function ActivityPage({
                             tickLine={false}
                             axisLine={false}
                             dx={-10}
+                            // ✅ Only show integer counts (no 1.5 chats)
+                            allowDecimals={false}
                           />
                           <Tooltip
                             contentStyle={{
                               backgroundColor: "hsl(var(--card))",
                               borderColor: "hsl(var(--border))",
                               borderRadius: "12px",
-                              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
                               color: "hsl(var(--foreground))",
+                              padding: "12px",
                             }}
                             cursor={{
                               stroke: "hsl(var(--primary))",
-                              strokeWidth: 1,
+                              strokeWidth: 2,
+                              strokeDasharray: "5 5",
+                            }}
+                            // ✅ Custom Tooltip Content
+                            formatter={(value: number) => [
+                              `${value} chats`,
+                              "Volume",
+                            ]}
+                            labelFormatter={(label) => {
+                              // Make tooltip header nice too
+                              const hour = parseInt(label.split(":")[0]);
+                              if (isNaN(hour)) return label;
+                              const ampm = hour >= 12 ? "PM" : "AM";
+                              const h = hour % 12 || 12;
+                              return `${h}:00 ${ampm}`;
                             }}
                           />
                           <Area
-                            type="monotone"
+                            type="monotone" // smooth curve
                             dataKey="count"
                             stroke="hsl(var(--primary))"
                             strokeWidth={3}
                             fill="url(#colorChats)"
+                            animationDuration={1500}
                           />
                         </AreaChart>
                       </ResponsiveContainer>

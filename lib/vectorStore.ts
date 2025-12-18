@@ -2,35 +2,34 @@ import { Pinecone } from "@pinecone-database/pinecone";
 import { PineconeStore } from "@langchain/pinecone";
 import { getEmbeddings } from "./embeddings";
 
-export async function getPineconeVectorStore(namespace?: string) {
-  console.log("--- Initializing Pinecone Vector Store ---");
-  console.log("Namespace:", namespace || "default");
+// Global cache for the Pinecone client to prevent reconnection overhead
+let pineconeClient: Pinecone | null = null;
 
-  // Initialize Pinecone client
-  const pinecone = new Pinecone({
-    apiKey: process.env.PINECONE_API_KEY!,
-  });
-  console.log("✅ Pinecone client created");
+function getPineconeClient() {
+  if (!pineconeClient) {
+    pineconeClient = new Pinecone({
+      apiKey: process.env.PINECONE_API_KEY!,
+    });
+  }
+  return pineconeClient;
+}
 
+export async function getPineconeVectorStore(namespace: string = "default") {
+  // 1. Get Cached Client
+  const pinecone = getPineconeClient();
   const indexName = process.env.PINECONE_INDEX_NAME || "plugin-rag-index";
-  console.log("Index name:", indexName);
-
   const index = pinecone.Index(indexName);
-  console.log("✅ Pinecone index accessed");
 
-  // Get embeddings
-  console.log("Getting embeddings...");
+  // 2. Get Embeddings (Ensure getEmbeddings is also optimized/cached if possible)
   const embeddings = getEmbeddings();
-  console.log("✅ Embeddings model initialized");
 
-  // Create vector store
-  console.log("Creating PineconeStore from existing index...");
+  // 3. Create Store
+  // Note: We await here because 'fromExistingIndex' validates the connection
   const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
     pineconeIndex: index as any,
     namespace: namespace,
+    maxConcurrency: 5, // Keep this for fast uploads
   });
-  console.log("✅ Vector store created successfully");
-  console.log("--- Vector Store Initialization Complete ---");
 
   return vectorStore;
 }

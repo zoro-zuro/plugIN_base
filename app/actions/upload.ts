@@ -7,143 +7,19 @@ import { api } from "@/convex/_generated/api";
 import { fetchMutation } from "convex/nextjs";
 import { Id } from "@/convex/_generated/dataModel";
 
-export const uploadDocument = async (
-  fileBase64: string,
+// Helper function to process Pinecone in background
+async function processVectorsInBackground(
+  fileBuffer: Buffer,
   fileName: string,
-  fileSize: number,
-  namespace: string, // ✅ Make this REQUIRED instead of optional
-) => {
-  const user = await currentUser();
-  if (!user) {
-    return {
-      success: false,
-      error: "User not authenticated",
-    };
-  }
-
-  // ✅ Validate namespace is provided
-  if (!namespace) {
-    return {
-      success: false,
-      error: "Namespace is required for upload",
-    };
-  }
-
-  try {
-    const fileBuffer = Buffer.from(fileBase64, "base64");
-
-    // 1) upload to Convex storage
-    const uploadUrl = await fetchMutation(api.documents.generateUploadUrl);
-
-    const uploadResponse = await fetch(uploadUrl, {
-      method: "POST",
-      headers: { "Content-Type": getContentType(fileName) },
-      body: fileBuffer,
-    });
-
-    if (!uploadResponse.ok) {
-      throw new Error("Failed to upload file to Convex");
-    }
-
-    const { storageId } = await uploadResponse.json();
-
-    // 2) preprocess -> chunks
-    const documents = await preprocessDocument(
-      fileBuffer,
-      fileName,
-      namespace, // ✅ Use namespace instead of user.id
-      undefined as any,
-    );
-
-    // 3) save Convex document with chunksCount
-    const documentId = await fetchMutation(api.documents.saveDocument, {
-      userId: user.id,
-      fileName,
-      fileSize,
-      fileType: getFileType(fileName),
-      storageId: storageId as Id<"_storage">,
-      chunksCount: documents.length,
-      namespace: namespace, // ✅ Use the passed namespace
-      fileDescription: "no description provided", // No description in this basic upload
-    });
-
-    // 4) attach documentId and namespace to each chunk's metadata
-    const documentsWithId = documents.map((doc) => ({
-      ...doc,
-      metadata: {
-        ...(doc.metadata || {}),
-        documentId, // ✅ For deletion filtering
-        userId: user.id,
-        namespace: namespace, // ✅ Add namespace to metadata
-        fileName,
-      },
-    }));
-
-    // 5) upsert into Pinecone with correct namespace
-    const vectorStore = await getPineconeVectorStore(namespace);
-    await vectorStore.addDocuments(documentsWithId);
-
-    console.log(
-      `✅ Uploaded ${documents.length} chunks to namespace: ${namespace}`,
-    );
-
-    return {
-      success: true,
-      message: `Successfully uploaded ${documents.length} chunks from ${fileName}`,
-      documentId,
-      chunks: documents.length,
-    };
-  } catch (error) {
-    console.error("Upload error:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Upload failed",
-    };
-  }
-};
-
-// ✅ NEW: Main Upload Action accepting File Object & Description
-export const uploadDocumentWithDescription = async (
-  file: File,
-  description: string,
   namespace: string,
-) => {
-  const user = await currentUser();
-  if (!user) {
-    return { success: false, error: "User not authenticated" };
-  }
-
-  if (!namespace) {
-    return { success: false, error: "Namespace is required" };
-  }
-
-  if (!description || description.trim().length === 0) {
-    return { success: false, error: "File description is required" };
-  }
-
+  documentId: Id<"documents">,
+  userId: string,
+  description: string,
+) {
   try {
-    const fileName = file.name;
-    const fileSize = file.size;
-    const arrayBuffer = await file.arrayBuffer();
-    const fileBuffer = Buffer.from(arrayBuffer);
+    console.time("Background Vector Processing");
 
-    // 1) Get Upload URL from Convex
-    const uploadUrl = await fetchMutation(api.documents.generateUploadUrl);
-
-    // 2) Upload file to Convex Storage
-    const uploadResponse = await fetch(uploadUrl, {
-      method: "POST",
-      headers: { "Content-Type": getContentType(fileName) },
-      body: fileBuffer,
-    });
-
-    if (!uploadResponse.ok) {
-      throw new Error("Failed to upload file to Convex storage");
-    }
-
-    const { storageId } = await uploadResponse.json();
-
-    // 3) Preprocess -> Chunks (LangChain)
+    // 1. Chunking (Fast with Node.js)
     const documents = await preprocessDocument(
       fileBuffer,
       fileName,
@@ -151,74 +27,98 @@ export const uploadDocumentWithDescription = async (
       undefined as any,
     );
 
-    // 4) Save Document Metadata to Convex (WITH DESCRIPTION)
-    const documentId = await fetchMutation(api.documents.saveDocument, {
-      userId: user.id,
-      fileName,
-      fileSize,
-      fileType: getFileType(fileName),
-      storageId: storageId as Id<"_storage">,
-      chunksCount: documents.length,
-      namespace: namespace,
-      fileDescription: description, // ✅ Pass description to mutation
-    });
-
-    // 5) Attach Metadata for Pinecone
+    // 2. Add Metadata
     const documentsWithId = documents.map((doc) => ({
       ...doc,
       metadata: {
         ...(doc.metadata || {}),
-        documentId, // Crucial for deletion
-        userId: user.id,
-        namespace: namespace,
+        documentId,
+        userId,
+        namespace,
         fileName,
-        fileDescription: description, // Optional: Store in vector metadata too
+        fileDescription: description,
       },
     }));
 
-    // 6) Upsert into Pinecone
+    // 3. Upsert to Pinecone (Fast with Cloudflare Embeddings)
+    // Note: getPineconeVectorStore uses your new 'lib/embeddings.ts' which uses Cloudflare
     const vectorStore = await getPineconeVectorStore(namespace);
     await vectorStore.addDocuments(documentsWithId);
 
-    console.log(
-      `✅ Uploaded ${documents.length} chunks to namespace: ${namespace} with description`,
-    );
+    // 4. ✅ Update the Chunk Count in Convex (so UI shows correct count later)
+    await fetchMutation(api.documents.updateChunkCount, {
+      // Make sure you created this mutation!
+      documentId,
+      chunksCount: documents.length,
+    });
+
+    console.timeEnd("Background Vector Processing");
+    console.log(`✅ [Background] Vectors upserted for ${fileName}`);
+  } catch (error) {
+    console.error("❌ [Background] Vector processing failed:", error);
+    // Optional: Mark document as "failed" in Convex
+  }
+}
+
+export const uploadDocumentWithDescription = async (
+  file: File,
+  description: string,
+  namespace: string,
+) => {
+  const user = await currentUser();
+  if (!user) return { success: false, error: "User not authenticated" };
+  if (!namespace) return { success: false, error: "Namespace required" };
+
+  try {
+    const fileName = file.name;
+    const fileSize = file.size;
+    const arrayBuffer = await file.arrayBuffer();
+    const fileBuffer = Buffer.from(arrayBuffer);
+
+    // --- STEP 1: FAST UPLOAD TO CONVEX (Critical Path - ~1-2s) ---
+    console.time("Convex Upload");
+
+    const uploadUrl = await fetchMutation(api.documents.generateUploadUrl);
+
+    const uploadResponse = await fetch(uploadUrl, {
+      method: "POST",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: fileBuffer,
+    });
+
+    if (!uploadResponse.ok) throw new Error("Convex upload failed");
+    const { storageId } = await uploadResponse.json();
+
+    const documentId = await fetchMutation(api.documents.saveDocument, {
+      userId: user.id,
+      fileName,
+      fileSize,
+      fileType: fileName.split(".").pop() || "unknown",
+      storageId: storageId as Id<"_storage">,
+      chunksCount: 0, // Placeholder
+      namespace,
+      fileDescription: description,
+    });
+    console.timeEnd("Convex Upload");
+
+    // --- STEP 2: TRIGGER BACKGROUND PROCESSING (Fire & Forget) ---
+    // Do NOT await this. This makes the UI return instantly.
+    processVectorsInBackground(
+      fileBuffer,
+      fileName,
+      namespace,
+      documentId,
+      user.id,
+      description,
+    ).catch((err) => console.error("Background process error:", err));
 
     return {
       success: true,
-      message: `Successfully uploaded ${fileName}`,
+      message: "File uploaded. AI processing started in background.",
       documentId,
-      chunks: documents.length,
     };
   } catch (error) {
     console.error("Upload error:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Upload failed",
-    };
+    return { success: false, error: "Upload failed" };
   }
 };
-
-// --- HELPERS ---
-
-function getContentType(fileName: string): string {
-  const extension = fileName.split(".").pop()?.toLowerCase();
-  switch (extension) {
-    case "pdf":
-      return "application/pdf";
-    case "docx":
-      return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-    case "doc":
-      return "application/msword";
-    case "txt":
-      return "text/plain";
-    case "md":
-      return "text/markdown";
-    default:
-      return "application/octet-stream";
-  }
-}
-
-function getFileType(fileName: string): string {
-  return fileName.split(".").pop()?.toLowerCase() || "unknown";
-}

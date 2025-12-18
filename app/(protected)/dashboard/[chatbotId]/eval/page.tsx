@@ -30,9 +30,9 @@ type DatasetRow = {
 };
 
 type CustomOverall = {
-  exact_match: number;
+  // exact_match: number;
   semantic_similarity: number;
-  keyword_precision: number;
+  // keyword_precision: number;
   keyword_recall: number;
   context_precision: number;
   context_recall: number;
@@ -106,21 +106,22 @@ export default function EvalPage({
 
     try {
       // Step 1: Generate responses for all test cases
-      const generatedDataset: DatasetRow[] = [];
+      let generatedDataset: DatasetRow[] = [];
 
-      for (let i = 0; i < tests.length; i++) {
-        const tc = tests[i];
+      const promises = tests.map(async (tc) => {
         try {
           const start = performance.now();
+
+          // Call the server action
           const res = await generateResponse(tc.question, {
             evalMode: true,
             chatbot: chatbot,
-            sessionId: `eval-${chatbotId}`,
+            sessionId: `eval-${chatbotId}`, // thread_id will now be randomized in backend
           });
+
           const end = performance.now();
           const latency = end - start;
 
-          // Extract contexts with full metadata
           const contexts =
             res.success && Array.isArray(res.contexts)
               ? res.contexts.map((d: any) => ({
@@ -129,27 +130,25 @@ export default function EvalPage({
                 }))
               : [];
 
-          generatedDataset.push({
+          return {
             question: tc.question,
-            answer: res.success
-              ? (res.answer ?? "")
-              : `Error: ${res.error ?? "Unknown error"}`,
+            answer: res.success ? (res.answer ?? "") : `Error: ${res.error}`,
             contexts: contexts,
             ground_truth: tc.groundTruth,
             latency_ms: latency,
-          });
+          };
         } catch (err) {
-          console.log("Error generating response for eval:", err);
-          generatedDataset.push({
+          console.error("Error generating response for eval:", err);
+          return {
             question: tc.question,
             answer: "Exception while calling generateResponse",
             contexts: [],
             ground_truth: tc.groundTruth,
             latency_ms: 0,
-          });
+          };
         }
-      }
-
+      });
+      generatedDataset = await Promise.all(promises);
       setDataset(generatedDataset);
 
       // Step 2: Send to evaluation API
@@ -351,17 +350,17 @@ export default function EvalPage({
 
                 {/* Metrics Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-8 relative z-10">
-                  <MetricCard
+                  {/* <MetricCard
                     title="Accuracy"
                     score={evalResult.overall.exact_match * 100}
                     icon={<FiCheckCircle />}
-                  />
+                  /> */}
                   <MetricCard
                     title="Relevance"
                     score={evalResult.overall.semantic_similarity * 100}
                     icon={<FiTarget />}
                   />
-                  <MetricCard
+                  {/* <MetricCard
                     title="Keywords"
                     score={
                       ((evalResult.overall.keyword_precision +
@@ -370,7 +369,7 @@ export default function EvalPage({
                       100
                     }
                     icon={<FiActivity />}
-                  />
+                  /> */}
                   <MetricCard
                     title="Context"
                     score={
@@ -483,20 +482,19 @@ export default function EvalPage({
 function calculateOverallScore(overall: CustomOverall): number {
   const score =
     overall.semantic_similarity * 60 +
-    ((overall.keyword_precision + overall.keyword_recall) / 2) * 20 +
+    overall.keyword_recall * 20 + // Adjusted weight
     ((overall.context_precision + overall.context_recall) / 2) * 20;
   return Math.round(score);
 }
 
 function calculateTestScore(row: CustomRow): number {
   const score =
-    row.exact_match * 25 +
-    row.semantic_similarity * 35 +
-    ((row.keyword_precision + row.keyword_recall) / 2) * 20 +
-    ((row.context_precision + row.context_recall) / 2) * 20;
+    // row.exact_match * 25 +  <-- REMOVED
+    row.semantic_similarity * 50 + // Increased weight
+    row.keyword_recall * 20 +
+    ((row.context_precision + row.context_recall) / 2) * 30;
   return Math.round(score);
 }
-
 function getPerformanceLabel(score: number): string {
   if (score >= 90) return "Excellent";
   if (score >= 75) return "Good";

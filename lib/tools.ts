@@ -1,10 +1,18 @@
-import { Tool } from "@langchain/core/tools";
+// lib/tools.ts
+import { StructuredTool } from "@langchain/core/tools"; // ✅ Switch to StructuredTool
 import { getPineconeVectorStore } from "./vectorStore";
+import { z } from "zod";
 
-const MAX_CONTEXT_CHARS = 4000; // prevent over-long prompts
+const MAX_CONTEXT_CHARS = 2500;
 
-export class KnowledgeBaseTool extends Tool {
+// ✅ Define schema outside the class for cleaner typing
+const SearchSchema = z.object({
+  query: z.string().describe("The search query to find relevant documents"),
+});
+
+export class KnowledgeBaseTool extends StructuredTool<typeof SearchSchema> {
   name = "knowledge_base_search";
+
   description = `Search through the user's knowledge base and uploaded documents.
 Use this tool when:
 - The user asks about specific data, files, policies, or information stored in documents.
@@ -12,13 +20,12 @@ Use this tool when:
 
 Do NOT use this for:
 - "Hi", "Hello", "Bye", "Thanks" (Standard greetings/closings).
-- General chitchat or questions clearly not about the company data.
+- General chitchat or questions clearly not about the company data.`;
 
-Input should be a clear search query describing what information is needed.`;
+  // ✅ Assign schema here
+  schema = SearchSchema;
 
   private namespace?: string;
-
-  // stores docs from the most recent call; useful for eval
   public lastDocs: any[] = [];
 
   constructor(namespace?: string) {
@@ -26,27 +33,30 @@ Input should be a clear search query describing what information is needed.`;
     this.namespace = namespace;
   }
 
-  async _call(query: string): Promise<string> {
-    console.log(`🔧 TOOL: Searching knowledge base for: "${query}"`);
+  // ✅ The input is now guaranteed to be the Zod inferred type { query: string }
+  async _call(input: z.infer<typeof SearchSchema>): Promise<string> {
+    const searchQuery = input.query; // No need to check for string type anymore
+
+    console.log(`🔧 TOOL: Searching knowledge base for: "${searchQuery}"`);
 
     try {
       const vectorStore = await getPineconeVectorStore(this.namespace);
 
       const retriever = vectorStore.asRetriever({
-        k: 3, // slightly higher k for better coverage
-        searchType: "mmr", // more diverse but still relevant results
+        k: 3,
+        searchType: "mmr",
         searchKwargs: {
-          lambda: 0.7, // 0.7 relevance / 0.3 diversity
+          lambda: 0.7,
         },
       });
 
-      const docs = await retriever.invoke(query);
+      const docs = await retriever.invoke(searchQuery);
       this.lastDocs = docs;
 
       console.log(`🔧 TOOL: Found ${docs.length} relevant documents`);
 
       if (!docs.length) {
-        return "No relevant information found in the knowledge base. The user may need to upload relevant documents first.";
+        return "No relevant information found in the knowledge base.";
       }
 
       const rawContext = docs
@@ -56,7 +66,6 @@ Input should be a clear search query describing what information is needed.`;
         })
         .join("\n\n---\n\n");
 
-      // Hard cap on context length to keep prompts fast and cheap
       const context =
         rawContext.length > MAX_CONTEXT_CHARS
           ? rawContext.slice(0, MAX_CONTEXT_CHARS)

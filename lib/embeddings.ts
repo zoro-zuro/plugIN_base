@@ -1,8 +1,9 @@
-import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
+import { CloudflareEmbeddings } from "./cloudflare-embeddings"; // Import from your new file
 
 export function getEmbeddings() {
-  return new HuggingFaceInferenceEmbeddings({
-    apiKey: process.env.HUGGINGFACE_API_KEY,
-    model: "BAAI/bge-m3", // BGE-M3 model for large context
+  return new CloudflareEmbeddings({
+    model: "@cf/baai/bge-base-en-v1.5",
+    apiToken: process.env.CLOUDFLARE_API_KEY!,
+    accountId: process.env.CLOUDFLARE_ACCOUNT_ID!,
   });
 }
