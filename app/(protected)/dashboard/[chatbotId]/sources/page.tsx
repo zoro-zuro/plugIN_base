@@ -332,7 +332,7 @@ export default function SourcesPage({
       />
 
       {/* Header */}
-      <div className="border-b border-border bg-card/50 backdrop-blur-md px-4 md:px-8 py-6 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-10">
+      <div className="border-b border-border bg-card/50 backdrop-blur-md px-4 md:px-8 py-6 flex  md:flex-row md:items-center justify-between gap-4 sticky top-0 z-10">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
             <FiDatabase className="text-primary" />
@@ -347,7 +347,8 @@ export default function SourcesPage({
           className="inline-flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-all"
         >
           <RiResetLeftLine className="h-4 w-4" />
-          Reset All
+          <span className="hidden md:inline">Reset All</span>
+          <span className="md:hidden">Reset</span>
         </button>
       </div>
 
@@ -362,7 +363,7 @@ export default function SourcesPage({
 
           {/* Files List Header */}
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <h3 className="text-lg font-bold text-foreground flex items-center gap-4">
               Uploaded Documents
               <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">
                 {documents?.length || 0}

@@ -238,6 +238,7 @@ export default function ActivityPage({
   const [timeRange, setTimeRange] = useState<"today" | "week" | "month">(
     "week",
   );
+  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   // ✅ Logs filters
   const [logDateFilter, setLogDateFilter] = useState<
@@ -266,6 +267,7 @@ export default function ActivityPage({
     chatbotId,
     startDate, // Uses memoized value
     endDate, // Uses memoized value
+    timezone: userTimeZone,
   });
 
   const logs = useQuery(api.analytics.getMessageLogs, {
@@ -360,7 +362,7 @@ export default function ActivityPage({
   }
 
   return (
-    <div className="py-8 animate-fade-in">
+    <div className="py-8 px-4 md:px-0 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>

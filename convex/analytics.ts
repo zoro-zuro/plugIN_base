@@ -70,6 +70,7 @@ export const getChatAnalytics = query({
     chatbotId: v.string(),
     startDate: v.number(),
     endDate: v.number(),
+    timezone: v.string(),
   },
   handler: async (ctx, args) => {
     // Get all sessions in date range
@@ -121,18 +122,26 @@ export const getChatAnalytics = query({
 
     // Hourly distribution (for wave chart)
     const hourlyData: Record<string, number> = {};
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      hour12: false, // returns "13", "14", etc.
+      timeZone: args.timezone || "UTC", // Use passed timezone or fallback
+    });
     messages.forEach((msg) => {
-      const hour = new Date(msg.timestamp).getHours();
+      // This converts the UTC timestamp to "13" (if it's 1 PM in India)
+      const hourStr = formatter.format(new Date(msg.timestamp));
+      let hour = parseInt(hourStr);
+
+      // Handle edge case where formatter might return "24"
+      if (hour === 24) hour = 0;
+
       const key = `${hour}:00`;
       hourlyData[key] = (hourlyData[key] || 0) + 1;
     });
-
-    // Convert to array for chart
     const hourlyChats = Array.from({ length: 24 }, (_, i) => ({
       hour: `${i}:00`,
       count: hourlyData[`${i}:00`] || 0,
     }));
-
     return {
       totalChats,
       totalMessages,

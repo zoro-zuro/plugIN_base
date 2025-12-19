@@ -278,7 +278,9 @@ export default function ChatbotWidget() {
               </p>
               <div className="flex items-center gap-2 mt-4 text-xs font-mono bg-background/50 p-2 rounded-lg border border-border w-fit">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="truncate max-w-[250px]">{embedUrl}</span>
+                <span className="truncate max-w-[250px]">
+                  {embedUrl.slice(0, 35)}...
+                </span>
               </div>
             </div>
             <button
@@ -290,62 +292,64 @@ export default function ChatbotWidget() {
           </section>
 
           {/* 2. Framework Selector */}
-          <section>
-            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                1
-              </span>
-              Choose Platform
-            </h2>
-            <div className="flex flex-wrap gap-3">
-              {frameworks.map((fw) => (
-                <button
-                  key={fw.id}
-                  onClick={() => setSelectedFramework(fw.id)}
-                  className={`px-5 py-3 rounded-xl font-medium transition-all flex items-center gap-2 border ${
-                    selectedFramework === fw.id
-                      ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20"
-                      : "bg-card text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
-                  }`}
-                >
-                  {fw.icon}
-                  {fw.name}
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {/* 3. Embed Code */}
-          <section>
-            <div className="flex items-center justify-between mb-4">
+          {/* ✅ UNIFIED SECTION: Frameworks + Embed Code */}
+          <section className="space-y-4">
+            <div className="flex justify-between items-center mb-4 ">
               <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                  2
+                  1
                 </span>
-                Copy Code
+                Integration Code
               </h2>
-              <button
-                onClick={handleCopy}
-                className="text-xs font-medium flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
-              >
-                {copied ? <FiCheck /> : <FiCopy />}
-                {copied ? "Copied!" : "Copy Snippet"}
-              </button>
+              <div className="">
+                <button
+                  onClick={handleCopy}
+                  className="shrink-0  flex  md:hidden items-center justify-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-medium rounded-lg hover:bg-primary/20 transition-colors"
+                >
+                  {copied ? <FiCheck size={14} /> : <FiCopy size={14} />}
+                  {copied ? "Copied" : "Copy Code"}
+                </button>
+              </div>
             </div>
 
             <div className="relative group">
+              {/* Glow Effect */}
               <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 rounded-xl -m-1 group-hover:from-violet-500/20 group-hover:to-fuchsia-500/20 transition-all duration-500 blur-sm" />
-              <div className="relative bg-card border border-border rounded-xl overflow-hidden shadow-2xl">
-                <div className="flex items-center gap-1.5 px-4 py-3 bg-muted/50 border-b border-border">
-                  <div className="w-3 h-3 rounded-full bg-red-400/80" />
-                  <div className="w-3 h-3 rounded-full bg-amber-400/80" />
-                  <div className="w-3 h-3 rounded-full bg-emerald-400/80" />
-                  <div className="ml-auto text-xs text-muted-foreground font-mono opacity-50">
-                    read-only
+
+              <div className="relative bg-[#0d1117] border border-border rounded-xl overflow-hidden shadow-2xl">
+                {/* ✅ MERGED HEADER: Frameworks (Left) + Copy (Right) */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-muted/10 border-b border-white/10 backdrop-blur-md">
+                  {/* Framework Selector (Replaces Mac Dots) */}
+                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto pb-2 sm:pb-0">
+                    {frameworks.map((fw) => (
+                      <button
+                        key={fw.id}
+                        onClick={() => setSelectedFramework(fw.id)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap border ${
+                          selectedFramework === fw.id
+                            ? "bg-primary/20 text-primary border-primary/20 shadow-sm"
+                            : "text-muted-foreground hover:text-gray-200 hover:bg-white/5 border-transparent"
+                        }`}
+                      >
+                        <span className="text-base">{fw.icon}</span>
+                        {fw.name}
+                      </button>
+                    ))}
                   </div>
+
+                  {/* Copy Button (Replaces Read-only) */}
+                  <button
+                    onClick={handleCopy}
+                    className="shrink-0 hidden  md:flex items-center justify-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-medium rounded-lg hover:bg-primary/20 transition-colors ml-auto"
+                  >
+                    {copied ? <FiCheck size={14} /> : <FiCopy size={14} />}
+                    {copied ? "Copied" : "Copy Code"}
+                  </button>
                 </div>
-                <div className="overflow-x-auto p-0">
-                  <pre className="p-6 text-sm font-mono leading-relaxed bg-[#0d1117] text-gray-300">
+
+                {/* ✅ CODE AREA: with Text Wrapping for Mobile */}
+                <div className="p-0">
+                  <pre className="p-4 sm:p-6 text-xs sm:text-sm font-mono leading-relaxed text-gray-300 whitespace-pre-wrap break-words">
                     <code>{getEmbedCode(selectedFramework)}</code>
                   </pre>
                 </div>

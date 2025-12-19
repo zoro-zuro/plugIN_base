@@ -299,7 +299,7 @@ export default function DashboardClientLayout({
         <div className="h-16 md:hidden" />
 
         <div className="sticky top-0 h-6 bg-gradient-to-b from-background to-transparent z-10 pointer-events-none hidden md:block" />
-        <div className="px-4 md:px-8 max-w-7xl mx-auto">{children}</div>
+        <div className="px-2 md:px-8 max-w-7xl md:mx-auto">{children}</div>
       </main>
     </div>
   );
