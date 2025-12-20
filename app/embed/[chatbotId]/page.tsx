@@ -5,13 +5,13 @@ import { FiSend, FiLoader, FiThumbsUp, FiThumbsDown } from "react-icons/fi";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Link from "next/link";
+import { Zap } from "lucide-react";
 
-// ✅ Updated Message type to include feedback
 type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
-  messageId?: string | null; // ✅ Allow null
+  messageId?: string | null;
   feedback?: "positive" | "negative" | null;
 };
 
@@ -28,7 +28,7 @@ export default function EmbedChatWidget({
 
   const trackSession = useMutation(api.analytics.startChatSession);
   const trackMessage = useMutation(api.analytics.trackMessage);
-  const addFeedback = useMutation(api.analytics.addMessageFeedback); // ✅ Add feedback mutation
+  const addFeedback = useMutation(api.analytics.addMessageFeedback);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -66,8 +66,6 @@ export default function EmbedChatWidget({
 
         for (const apiUrl of apis) {
           try {
-            console.log(`🌍 Trying geolocation API: ${apiUrl}`);
-
             const response = await fetch(apiUrl, {
               signal: AbortSignal.timeout(5000),
             });
@@ -91,8 +89,6 @@ export default function EmbedChatWidget({
             }
 
             if (country !== "Unknown") {
-              console.log(`✅ Geolocation found: ${city}, ${country}`);
-
               await trackSession({
                 chatbotId: chatbot.chatbotId,
                 namespace: chatbot.namespace,
@@ -100,16 +96,13 @@ export default function EmbedChatWidget({
                 userCountry: country,
                 userCity: city,
               });
-
               return;
             }
           } catch (error) {
-            console.warn(`❌ ${apiUrl} failed:`, error);
             continue;
           }
         }
 
-        console.log("⚠️ All geolocation APIs failed, using Unknown");
         await trackSession({
           chatbotId: chatbot.chatbotId,
           namespace: chatbot.namespace,
@@ -129,20 +122,14 @@ export default function EmbedChatWidget({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // ✅ Handle feedback click
+  // Handle feedback click
   const handleFeedback = async (
     messageIndex: number,
     feedbackType: "positive" | "negative",
   ) => {
     const message = messages[messageIndex];
 
-    // ✅ Better null check
-    if (!message.messageId || message.feedback !== null) {
-      console.log(
-        "Cannot add feedback: no messageId or feedback already given",
-      );
-      return;
-    }
+    if (!message.messageId || message.feedback !== null) return;
 
     try {
       setMessages((prev) =>
@@ -152,11 +139,9 @@ export default function EmbedChatWidget({
       );
 
       await addFeedback({
-        messageId: message.messageId as any, // ✅ Safe because we checked above
+        messageId: message.messageId as any,
         feedback: feedbackType,
       });
-
-      console.log(`✅ Feedback recorded: ${feedbackType}`);
     } catch (error) {
       console.error("Feedback error:", error);
       setMessages((prev) =>
@@ -185,7 +170,6 @@ export default function EmbedChatWidget({
     const startTime = Date.now();
 
     try {
-      // Track user message
       await trackMessage({
         chatbotId: chatbot.chatbotId,
         namespace: chatbot.namespace,
@@ -206,11 +190,9 @@ export default function EmbedChatWidget({
       });
 
       const data = await response.json();
-
       const responseTime = Date.now() - startTime;
 
       if (data.success) {
-        // ✅ Track assistant message and get the message ID back
         const messageId = await trackMessage({
           chatbotId: chatbot.chatbotId,
           namespace: chatbot.namespace,
@@ -224,7 +206,7 @@ export default function EmbedChatWidget({
           id: `assistant-${Date.now()}`,
           role: "assistant",
           content: data.answer,
-          messageId: messageId as string | null, // ✅ Now TypeScript is happy
+          messageId: messageId as string | null,
           feedback: null,
         };
 
@@ -267,138 +249,162 @@ export default function EmbedChatWidget({
 
   if (!chatbot) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading chatbot...</p>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-white font-sans">
+    <div className="flex flex-col h-screen bg-background text-foreground">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex items-center justify-between shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-xl">
-            🤖
+      <div className="border-b border-border bg-card/50 backdrop-blur-sm px-4 py-3">
+        <div className="flex items-center gap-3 max-w-3xl mx-auto">
+          <div className="relative">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-fuchsia-500 flex items-center justify-center shadow-sm">
+              <Zap className="w-4 h-4 text-white fill-white" />
+            </div>
+            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-background rounded-full" />
           </div>
-          <div>
-            <h3 className="font-semibold text-base">{chatbot.name}</h3>
-            <p className="text-xs opacity-90">Online</p>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-sm text-foreground truncate">
+              {chatbot.name}
+            </h3>
+            <p className="text-xs text-muted-foreground">Online</p>
           </div>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
-        {messages.map((msg, index) => (
-          <div
-            key={msg.id}
-            className={`flex flex-col ${
-              msg.role === "user" ? "items-end" : "items-start"
-            }`}
-          >
-            {/* Message Bubble */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="max-w-3xl mx-auto space-y-4">
+          {messages.map((msg, index) => (
             <div
-              className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm ${
-                msg.role === "user"
-                  ? "bg-blue-600 text-white rounded-br-sm"
-                  : "bg-white text-gray-900 border border-gray-200 rounded-bl-sm"
+              key={msg.id}
+              className={`flex w-full animate-slide-up ${
+                msg.role === "user" ? "justify-end" : "justify-start"
               }`}
             >
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                {msg.content}
-              </p>
-            </div>
+              <div className="flex flex-col max-w-[85%] gap-1.5">
+                <div
+                  className={`px-3.5 py-2.5 text-sm leading-relaxed ${
+                    msg.role === "user"
+                      ? "bg-primary text-primary-foreground rounded-2xl rounded-br-sm"
+                      : "bg-card text-card-foreground border border-border rounded-2xl rounded-bl-sm"
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                </div>
 
-            {/* ✅ Feedback Buttons (only for assistant messages, not welcome) */}
-            {msg.role === "assistant" && msg.id !== "welcome" && (
-              <div className="flex items-center gap-2 mt-1.5 ml-2">
-                {msg.feedback === null ? (
-                  <>
-                    <button
-                      onClick={() => handleFeedback(index, "positive")}
-                      className="p-1.5 hover:bg-gray-200 rounded-full transition-colors group"
-                      title="Good response"
-                      aria-label="Thumbs up"
-                    >
-                      <FiThumbsUp
-                        className="text-gray-400 group-hover:text-green-600 transition-colors"
-                        size={14}
-                      />
-                    </button>
-                    <button
-                      onClick={() => handleFeedback(index, "negative")}
-                      className="p-1.5 hover:bg-gray-200 rounded-full transition-colors group"
-                      title="Bad response"
-                      aria-label="Thumbs down"
-                    >
-                      <FiThumbsDown
-                        className="text-gray-400 group-hover:text-red-600 transition-colors"
-                        size={14}
-                      />
-                    </button>
-                  </>
-                ) : (
-                  <span className="text-xs text-gray-500 flex items-center gap-1.5 py-1">
-                    {msg.feedback === "positive" ? (
+                {/* Feedback */}
+                {msg.role === "assistant" && msg.id !== "welcome" && (
+                  <div className="flex items-center gap-1.5 px-1">
+                    {msg.feedback === null ? (
                       <>
-                        <FiThumbsUp className="text-green-600" size={14} />
-                        <span>Thanks for your feedback!</span>
+                        <button
+                          onClick={() => handleFeedback(index, "positive")}
+                          className="p-1 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10 rounded transition-colors"
+                          aria-label="Good response"
+                        >
+                          <FiThumbsUp size={12} />
+                        </button>
+                        <button
+                          onClick={() => handleFeedback(index, "negative")}
+                          className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                          aria-label="Bad response"
+                        >
+                          <FiThumbsDown size={12} />
+                        </button>
                       </>
                     ) : (
-                      <>
-                        <FiThumbsDown className="text-red-600" size={14} />
-                        <span>Thanks for your feedback!</span>
-                      </>
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1 px-1.5 py-0.5 bg-muted rounded-full">
+                        {msg.feedback === "positive" ? (
+                          <>
+                            <FiThumbsUp
+                              size={10}
+                              className="text-emerald-600"
+                            />
+                            Helpful
+                          </>
+                        ) : (
+                          <>
+                            <FiThumbsDown
+                              size={10}
+                              className="text-destructive"
+                            />
+                            Not helpful
+                          </>
+                        )}
+                      </span>
                     )}
-                  </span>
+                  </div>
                 )}
               </div>
-            )}
-          </div>
-        ))}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-              <FiLoader className="animate-spin text-gray-600" size={18} />
             </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+          ))}
+
+          {isLoading && (
+            <div className="flex justify-start animate-slide-up">
+              <div className="bg-card border border-border px-3.5 py-2.5 rounded-2xl rounded-bl-sm flex gap-1">
+                <span
+                  className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce"
+                  style={{ animationDelay: "0s" }}
+                />
+                <span
+                  className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce"
+                  style={{ animationDelay: "0.15s" }}
+                />
+                <span
+                  className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce"
+                  style={{ animationDelay: "0.3s" }}
+                />
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Input */}
-      <div className="p-3 bg-white border-t border-slate-100">
-        <div className="relative flex items-center">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Type your message..."
-            disabled={isLoading}
-            className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm text-slate-900 transition-all placeholder:text-slate-400"
-          />
-          <button
-            onClick={handleSend}
-            disabled={isLoading || !input.trim()}
-            className="absolute right-2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-all shadow-sm hover:shadow-md active:scale-95"
-          >
-            {isLoading ? (
-              <FiLoader className="animate-spin" size={16} />
-            ) : (
-              <FiSend size={16} />
-            )}
-          </button>
-        </div>
-        <div className="text-[10px] text-slate-400 text-center mt-2 flex items-center justify-center gap-1">
-          Powered by{" "}
-          <Link href="/" target="_blank">
-            <span className="font-semibold gradient-text">PlugIn</span>
-          </Link>
+      <div className="border-t border-border bg-card/30 backdrop-blur-sm p-3">
+        <div className="max-w-3xl mx-auto">
+          <div className="relative flex items-center gap-2 bg-background border border-input rounded-2xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-ring transition-all">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Type a message..."
+              disabled={isLoading}
+              className="flex-1 bg-transparent border-0 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none py-1.5"
+            />
+            <button
+              onClick={handleSend}
+              disabled={isLoading || !input.trim()}
+              className="p-2 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 disabled:opacity-40 transition-all active:scale-95"
+            >
+              {isLoading ? (
+                <FiLoader className="animate-spin" size={16} />
+              ) : (
+                <FiSend size={16} />
+              )}
+            </button>
+          </div>
+          <div className="mt-2 text-center">
+            <Link
+              href="/"
+              target="_blank"
+              className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Zap size={9} />
+              Powered by{" "}
+              <span className="gradient-text font-semibold">PlugIn</span>
+            </Link>
+          </div>
         </div>
       </div>
     </div>

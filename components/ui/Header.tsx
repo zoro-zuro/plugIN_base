@@ -1,4 +1,11 @@
 "use client";
+import { useTheme } from "next-themes";
+import { useState, useEffect } from "react";
+import { useUser, SignInButton, UserButton } from "@clerk/nextjs";
+import { FiSun, FiMoon } from "react-icons/fi";
+import { Button } from "./Buttons";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Navbar,
   NavBody,
@@ -8,34 +15,25 @@ import {
   MobileNavToggle,
   MobileNavMenu,
 } from "@/components/ui/resizable-navbar";
-import { useState, useEffect } from "react";
-import { useUser, SignInButton, UserButton } from "@clerk/nextjs";
-import { FiSun, FiMoon } from "react-icons/fi";
-import { useTheme } from "../hooks/useTheme";
-import { Button } from "./Buttons";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 
 export function Header() {
   const { isSignedIn } = useUser();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme(); // ✅ Use next-themes
   const pathname = usePathname();
   const router = useRouter();
-  // 1. Rename to 'isAtTop' so the logic is clear (True = at top, False = scrolled down)
   const [isAtTop, setIsAtTop] = useState(true);
+
+  // ✅ Toggle function
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
 
   useEffect(() => {
     const handleScroll = () => {
-      // 2. Use a small buffer (e.g., > 10px) to prevent flickering on small movements
-      // Logic: If scrollY is low, we are "at top".
       setIsAtTop(window.scrollY <= 10);
     };
-
-    // 3. Trigger once on mount to ensure state is correct immediately (e.g., page refresh)
     handleScroll();
-
-    // 4. Use { passive: true } for better scroll performance in browsers
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -64,15 +62,11 @@ export function Header() {
   return (
     <div
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isAtTop
-          ? "glass-morphism shadow-sm" // Style when at the top (Before scroll)
-          : "bg-transparent" // Style when scrolled down (After scroll)
+        isAtTop ? "glass-morphism shadow-sm" : "bg-transparent"
       }`}
     >
       <Navbar>
-        {/* Desktop Navigation */}
         <NavBody>
-          {/* Logo */}
           <button
             onClick={() => router.push("/")}
             className="flex items-center gap-2 group outline-none"
@@ -82,12 +76,10 @@ export function Header() {
             </span>
           </button>
 
-          {/* Center Items */}
           <div className="flex-1 flex justify-center">
             <NavItems items={navItems} />
           </div>
 
-          {/* Right Actions */}
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -109,7 +101,6 @@ export function Header() {
           </div>
         </NavBody>
 
-        {/* Mobile Navigation */}
         <MobileNav className="md:hidden">
           <MobileNavHeader>
             <Link href="/" className="flex items-center gap-2">

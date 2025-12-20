@@ -21,7 +21,7 @@ import { GrDocumentTest } from "react-icons/gr";
 import { UserButton, useUser, SignOutButton } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useTheme } from "@/components/hooks/useTheme";
+import { useTheme } from "next-themes";
 
 const sidebarItems = [
   { name: "Playground", icon: FiMessageSquare, path: "playground" },
@@ -39,7 +39,7 @@ export default function DashboardClientLayout({
   children: React.ReactNode;
   chatbotId: string;
 }) {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -96,7 +96,7 @@ export default function DashboardClientLayout({
 
         <div className="flex items-center gap-2">
           <button
-            onClick={toggleTheme}
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="p-2 rounded-full text-muted-foreground hover:bg-muted transition-colors"
           >
             {theme === "dark" ? <FiSun size={18} /> : <FiMoon size={18} />}
@@ -138,7 +138,7 @@ export default function DashboardClientLayout({
           <div className="flex items-center gap-1">
             {/* Desktop Theme Toggle */}
             <button
-              onClick={toggleTheme}
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="hidden md:flex items-center p-2 rounded-full text-sm font-medium text-muted-foreground bg-muted hover:text-foreground hover:bg-muted/80 transition-all active:scale-95"
             >
               {theme === "dark" ? <FiSun size={16} /> : <FiMoon size={16} />}

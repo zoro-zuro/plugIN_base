@@ -3,19 +3,9 @@ import { HfInference } from "@huggingface/inference";
 
 export const runtime = "nodejs";
 
-// type EvalInputRow = {
-//   question: string;
-//   answer: string;
-//   contexts: string[];
-//   ground_truth: string;
-//   latency_ms: number;
-// };
-
 type EvalSampleScores = {
   question: string;
-  // exact_match: number;
   semantic_similarity: number;
-  // keyword_precision: number;
   keyword_recall: number;
   context_precision: number;
   context_recall: number;
@@ -24,9 +14,7 @@ type EvalSampleScores = {
 
 type EvalResult = {
   overall: {
-    // exact_match: number;
     semantic_similarity: number;
-    // keyword_precision: number;
     keyword_recall: number;
     context_precision: number;
     context_recall: number;
@@ -35,10 +23,8 @@ type EvalResult = {
   rows: EvalSampleScores[];
 };
 
-// Initialize HuggingFace Inference (same as your RAG)
 const hf = new HfInference(process.env.HUGGINGFACE_API_KEY || "");
 
-// Simple English stopwords
 const STOPWORDS = new Set([
   "the",
   "a",
@@ -83,7 +69,6 @@ const STOPWORDS = new Set([
   "database",
 ]);
 
-// Cosine similarity between two vectors
 function cosineSimilarity(a: number[], b: number[]): number {
   if (!a.length || !b.length) return 0;
   let dot = 0,
@@ -97,32 +82,12 @@ function cosineSimilarity(a: number[], b: number[]): number {
   return magA && magB ? dot / (Math.sqrt(magA) * Math.sqrt(magB)) : 0;
 }
 
-// Get embeddings using BGE-M3 (same as your RAG)
-// async function getEmbedding(text: string): Promise<number[]> {
-//   try {
-//     const response = await hf.featureExtraction({
-//       model: "BAAI/bge-m3",
-//       inputs: text,
-//     });
-
-//     // HF returns nested array, flatten it
-//     if (Array.isArray(response[0]) && typeof response[0][0] === "number") {
-//       return response[0] as number[];
-//     }
-//     return response as number[];
-//   } catch (error) {
-//     console.error("Embedding error:", error);
-//     throw error;
-//   }
-// }
-
 async function getBatchEmbeddings(texts: string[]): Promise<number[][]> {
   try {
     const response = await hf.featureExtraction({
       model: "BAAI/bge-m3",
       inputs: texts,
     });
-    // Ensure we return array of arrays
     if (
       Array.isArray(response) &&
       response.length > 0 &&
@@ -133,74 +98,60 @@ async function getBatchEmbeddings(texts: string[]): Promise<number[][]> {
     return [];
   } catch (error) {
     console.error("Batch embedding error:", error);
-    // Fallback: return empty vectors to prevent crash
     return texts.map(() => []);
   }
 }
 
-// Semantic similarity using embeddings
-// async function semanticSimilarity(
-//   text1: string,
-//   text2: string,
-// ): Promise<number> {
-//   try {
-//     const [embedding1, embedding2] = await Promise.all([
-//       getEmbedding(text1),
-//       getEmbedding(text2),
-//     ]);
+function uniqueKeywords(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "")
+      .split(/\s+/)
+      .filter((t) => !STOPWORDS.has(t) && t.length > 2),
+  );
+}
 
-//     const similarity = cosineSimilarity(embedding1, embedding2);
+// ✅ NEW: Smart Answer Containment Check
+// If ground truth is fully contained in answer, return 1.0
+function smartSemanticScore(
+  answer: string,
+  groundTruth: string,
+  embeddingScore: number,
+): number {
+  // Normalize both
+  const ansNorm = answer.toLowerCase().trim();
+  const gtNorm = groundTruth.toLowerCase().trim();
 
-//     // Convert to 0-1 range (cosine similarity is already -1 to 1)
-//     return Math.max(0, Math.min(1, (similarity + 1) / 2));
-//   } catch (error) {
-//     console.error("Semantic similarity error:", error);
-//     return 0;
-//   }
-// }
+  // Case 1: Exact substring match (e.g., "Sheik Ahamed Yasin" in "The candidate name is Sheik Ahamed Yasin.")
+  if (ansNorm.includes(gtNorm)) {
+    return 1.0; // 💯 Perfect Score
+  }
 
-// function tokenize(text: string): string[] {
-//   return text
-//     .toLowerCase()
-//     .replace(/[^a-z0-9\s]/g, " ")
-//     .split(/\s+/)
-//     .filter((t) => t.length > 0);
-// }
+  // Case 2: All ground truth keywords present in answer (order-independent)
+  const gtKeywords = uniqueKeywords(groundTruth);
+  const ansKeywords = uniqueKeywords(answer);
 
-// function uniqueKeywords(text: string): Set<string> {
-//   const tokens = tokenize(text);
-//   return new Set(tokens.filter((t) => !STOPWORDS.has(t)));
-// }
+  if (gtKeywords.size === 0) return embeddingScore; // No keywords to check
 
-// function exactMatch(a: string, b: string): number {
-//   // Normalize both strings
-//   const groundTruth = b.trim().toLowerCase();
-//   const modelAnswer = a.trim().toLowerCase();
+  let matchedKeywords = 0;
+  for (const keyword of gtKeywords) {
+    if (ansKeywords.has(keyword)) {
+      matchedKeywords++;
+    }
+  }
 
-//   // If ground truth is empty, return 0
-//   if (groundTruth.length === 0) return 0;
+  const keywordCoverage = matchedKeywords / gtKeywords.size;
 
-//   // Check if ground truth is contained in model answer
-//   if (modelAnswer.includes(groundTruth)) {
-//     return 1; // 100% match
-//   }
+  // If answer contains ALL keywords from ground truth, score = 1.0
+  if (keywordCoverage === 1.0) {
+    return 1.0; // 💯 Perfect Score
+  }
 
-//   // Token-based overlap: check what % of ground truth tokens are in answer
-//   const gtTokens = groundTruth.split(/\s+/).filter((t) => t.length > 0);
-//   const answerTokens = new Set(
-//     modelAnswer.split(/\s+/).filter((t) => t.length > 0),
-//   );
-
-//   let matchedTokens = 0;
-//   for (const token of gtTokens) {
-//     if (answerTokens.has(token)) {
-//       matchedTokens++;
-//     }
-//   }
-
-//   // Return percentage of ground truth tokens found in answer
-//   return matchedTokens / gtTokens.length;
-// }
+  // Otherwise, blend keyword coverage with embedding score
+  // Give more weight to keyword coverage (80%) vs embeddings (20%)
+  return Math.max(embeddingScore, keywordCoverage * 0.8 + embeddingScore * 0.2);
+}
 
 function keywordPR(
   answer: string,
@@ -233,10 +184,7 @@ function contextPR(
   precision: number;
   recall: number;
 } {
-  // Case 1: No contexts retrieved
   if (contexts.length === 0) {
-    // If answer is perfect (>=0.85) without context, give full credit.
-    // This handles "memory" answers well.
     if (semanticSimilarity >= 0.85) {
       return { precision: 1.0, recall: 1.0 };
     } else {
@@ -244,15 +192,10 @@ function contextPR(
     }
   }
 
-  // Case 2: Evaluate retrieved contexts
   const gtKeywords = uniqueKeywords(groundTruth);
   if (gtKeywords.size === 0) {
     return { precision: 0, recall: 0 };
   }
-
-  // ✅ FIX: Calculate "Soft Precision"
-  // Instead of requiring ALL docs to be relevant, we score based on the BEST doc.
-  // If the best doc covers 80% of the keywords, Precision = 1.0 (Perfect retrieval).
 
   let bestDocScore = 0;
   const coveredKeywords = new Set<string>();
@@ -274,12 +217,7 @@ function contextPR(
     }
   }
 
-  // Precision is now: "Did we find at least one really good document?"
-  // If best doc has >50% of keywords, we consider retrieval successful (1.0).
-  // Otherwise, we scale it down.
   const precision = bestDocScore > 0.5 ? 1.0 : bestDocScore * 2;
-
-  // Recall remains: "Did we cover all facts across ALL documents?"
   const recall = coveredKeywords.size / gtKeywords.size;
 
   return { precision, recall };
@@ -312,37 +250,32 @@ export async function POST(req: Request) {
 
   try {
     console.log(
-      `📊 Evaluating ${data.length} test cases with Batch BGE-M3 embeddings...`,
+      `📊 Evaluating ${data.length} test cases with Smart Containment Check...`,
     );
 
-    // ✅ OPTIMIZATION: Prepare all texts for 1 big API Call
-    // Order: [Answer_1, GT_1, Answer_2, GT_2, ...]
     const allTexts: string[] = [];
     data.forEach((row) => {
       allTexts.push(row.answer || "");
       allTexts.push(row.ground_truth || "");
     });
 
-    // 1. Fetch ALL embeddings in a single request (or batches of 50)
     const allEmbeddings = await getBatchEmbeddings(allTexts);
 
-    // 2. Process results efficiently
     const rows: EvalSampleScores[] = data.map((row, index) => {
-      // Retrieve pre-calculated embeddings
       const answerEmb = allEmbeddings[index * 2];
       const gtEmb = allEmbeddings[index * 2 + 1];
 
-      // Metric 1: Semantic Similarity
+      // Raw embedding similarity
       const rawSim = cosineSimilarity(answerEmb, gtEmb);
-      const semanticScore = Math.max(0, Math.min(1, (rawSim + 1) / 2));
+      const embeddingScore = Math.max(0, Math.min(1, (rawSim + 1) / 2));
 
-      // Metric 2: Keyword Recall (Fast CPU op)
       const answer = row.answer || "";
       const gt = row.ground_truth || "";
-      const kw = keywordPR(answer, gt);
 
-      // Metric 3: Context Metrics (Simplified Logic)
-      // We pass the semantic score to contextPR to infer quality if no context was used
+      // ✅ Use Smart Scoring (checks containment first)
+      const semanticScore = smartSemanticScore(answer, gt, embeddingScore);
+
+      const kw = keywordPR(answer, gt);
       const contexts = Array.isArray(row.contexts) ? row.contexts : [];
       const ctx = contextPR(contexts, gt, semanticScore);
 
@@ -356,7 +289,6 @@ export async function POST(req: Request) {
       };
     });
 
-    // 3. Calculate Averages
     const n = rows.length;
     const avg = (f: (r: EvalSampleScores) => number) =>
       n > 0 ? rows.reduce((s, r) => s + f(r), 0) / n : 0;
@@ -384,13 +316,4 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
-}
-function uniqueKeywords(text: string): Set<string> {
-  return new Set(
-    text
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, "")
-      .split(/\s+/)
-      .filter((t) => !STOPWORDS.has(t) && t.length > 2),
-  );
 }

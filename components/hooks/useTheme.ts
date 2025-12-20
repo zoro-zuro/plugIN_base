@@ -7,7 +7,7 @@ export function useTheme() {
     // Check for stored theme or system preference
     const stored = localStorage.getItem("theme") as "light" | "dark" | null;
     const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)"
+      "(prefers-color-scheme: dark)",
     ).matches;
 
     setTheme(stored || (prefersDark ? "dark" : "light"));

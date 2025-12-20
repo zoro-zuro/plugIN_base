@@ -11,8 +11,6 @@ import {
   FiSearch,
   FiThumbsUp,
   FiFilter,
-  FiChevronDown,
-  FiChevronUp,
   FiCalendar,
   FiBarChart2,
 } from "react-icons/fi";
@@ -25,7 +23,9 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { IconType } from "react-icons";
+import { CustomSelect } from "@/components/ui/Field";
+import SessionGroup from "@/components/ui/SessionGroup";
+import StatCard from "@/components/ui/StateCard";
 
 type Tab = "chats" | "logs";
 type FeedbackFilter = "all" | "positive" | "negative" | "no-feedback";
@@ -40,194 +40,6 @@ interface MessageLog {
   responseTime?: number;
 }
 
-// ✅ Stat Card Component
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  variant = "primary",
-}: {
-  icon: IconType;
-  label: string;
-  value: number;
-  variant?: "primary" | "secondary" | "accent" | "destructive";
-}) {
-  const variants = {
-    primary: "bg-primary/10 text-primary ring-primary/20",
-    secondary: "bg-secondary text-secondary-foreground ring-border",
-    accent:
-      "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20",
-    destructive: "bg-destructive/10 text-destructive ring-destructive/20",
-  };
-
-  return (
-    <div className="bg-card border border-border rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-      <div
-        className={`inline-flex p-3 rounded-xl ring-1 ${variants[variant]} mb-4`}
-      >
-        <Icon className="text-xl" />
-      </div>
-      <p className="text-sm font-medium text-muted-foreground mb-1">{label}</p>
-      <p className="text-3xl font-bold text-foreground tracking-tight">
-        {value.toLocaleString()}
-      </p>
-    </div>
-  );
-}
-
-// ✅ Session Group Component
-function SessionGroup({
-  sessionId,
-  messages,
-  isExpanded,
-  onToggle,
-}: {
-  sessionId: string;
-  messages: MessageLog[];
-  isExpanded: boolean;
-  onToggle: () => void;
-}) {
-  const startTime = messages[0]?.timestamp;
-  const positiveCount = messages.filter(
-    (m) => m.feedback === "positive",
-  ).length;
-  const negativeCount = messages.filter(
-    (m) => m.feedback === "negative",
-  ).length;
-
-  return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden mb-4 transition-all duration-300 hover:border-primary/30">
-      {/* Session Header */}
-      <button
-        onClick={onToggle}
-        className="w-full px-6 py-4 flex items-center justify-between hover:bg-muted/30 transition-colors"
-      >
-        <div className="flex items-center gap-4">
-          <div
-            className={`p-2 rounded-lg transition-colors ${isExpanded ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}
-          >
-            {isExpanded ? <FiChevronUp /> : <FiChevronDown />}
-          </div>
-          <div className="text-left">
-            <div className="font-semibold text-foreground flex items-center gap-2">
-              Session {sessionId.slice(-8)}
-              {negativeCount > 0 && (
-                <span className="w-2 h-2 rounded-full bg-destructive" />
-              )}
-            </div>
-            <div className="text-xs text-muted-foreground font-mono">
-              {sessionId}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="hidden md:flex items-center gap-2 bg-muted/50 px-3 py-1 rounded-lg">
-            <FiClock size={14} />
-            <span>{new Date(startTime).toLocaleString()}</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="font-medium text-foreground">
-              {messages.length} msgs
-            </span>
-
-            {(positiveCount > 0 || negativeCount > 0) && (
-              <div className="flex items-center gap-2 border-l border-border pl-3">
-                {positiveCount > 0 && (
-                  <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-bold bg-emerald-500/10 px-2 py-1 rounded">
-                    <FiThumbsUp size={12} /> {positiveCount}
-                  </span>
-                )}
-                {negativeCount > 0 && (
-                  <span className="flex items-center gap-1 text-destructive text-xs font-bold bg-destructive/10 px-2 py-1 rounded">
-                    <FiThumbsDown size={12} /> {negativeCount}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </button>
-
-      {/* Session Messages */}
-      {isExpanded && (
-        <div className="border-t border-border bg-muted/5">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-muted/50 text-xs uppercase text-muted-foreground font-semibold">
-                <tr>
-                  <th className="px-6 py-3">Time</th>
-                  <th className="px-6 py-3">Role</th>
-                  <th className="px-6 py-3 w-1/2">Message</th>
-                  <th className="px-6 py-3">Latency</th>
-                  <th className="px-6 py-3">Feedback</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {messages.map((msg, idx) => (
-                  <tr
-                    key={idx}
-                    className="hover:bg-muted/30 transition-colors group"
-                  >
-                    <td className="px-6 py-4 text-sm text-muted-foreground whitespace-nowrap font-mono">
-                      {new Date(msg.timestamp).toLocaleTimeString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2.5 py-1 text-xs font-bold rounded-md uppercase tracking-wide ${
-                          msg.role === "user"
-                            ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                            : "bg-primary/10 text-primary"
-                        }`}
-                      >
-                        {msg.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-foreground max-w-lg">
-                      <div className="line-clamp-2 group-hover:line-clamp-none transition-all">
-                        {msg.content}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground font-mono">
-                      {msg.responseTime ? (
-                        <span
-                          className={`${msg.responseTime > 2000 ? "text-orange-500" : "text-emerald-600"}`}
-                        >
-                          {msg.responseTime}ms
-                        </span>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {msg.feedback === "positive" && (
-                        <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
-                          <FiThumbsUp size={14} className="fill-current/20" />{" "}
-                          Positive
-                        </span>
-                      )}
-                      {msg.feedback === "negative" && (
-                        <span className="inline-flex items-center gap-1.5 text-destructive font-medium">
-                          <FiThumbsDown size={14} className="fill-current/20" />{" "}
-                          Negative
-                        </span>
-                      )}
-                      {!msg.feedback && (
-                        <span className="text-muted-foreground/30">-</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function ActivityPage({
   params,
 }: {
@@ -236,7 +48,7 @@ export default function ActivityPage({
   const { chatbotId } = use(params);
   const [activeTab, setActiveTab] = useState<Tab>("chats");
   const [timeRange, setTimeRange] = useState<"today" | "week" | "month">(
-    "week",
+    "today",
   );
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -362,9 +174,9 @@ export default function ActivityPage({
   }
 
   return (
-    <div className="py-8 px-4 md:px-0 animate-fade-in">
+    <div className="md:pb-8 pb-8 pt-8 px-4 md:px-0 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 border-b border-border pb-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2 tracking-tight">
             Activity
@@ -643,38 +455,40 @@ export default function ActivityPage({
 
               {/* Date Filter */}
               <div className="md:col-span-3">
-                <div className="relative">
-                  <FiCalendar className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                  <select
-                    value={logDateFilter}
-                    onChange={(e) => setLogDateFilter(e.target.value as any)}
-                    className="w-full pl-10 pr-4 py-2.5 appearance-none bg-muted/30 border border-input rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer hover:bg-muted/50 transition-colors"
-                  >
-                    <option value="today">Today</option>
-                    <option value="week">Last 7 Days</option>
-                    <option value="month">Last 30 Days</option>
-                    <option value="all">All Time</option>
-                  </select>
-                </div>
+                <CustomSelect
+                  value={logDateFilter}
+                  onChange={(val) => setLogDateFilter(val as any)}
+                  icon={FiCalendar}
+                  options={[
+                    { value: "today", label: "Today" },
+                    { value: "week", label: "Last 7 Days" },
+                    { value: "month", label: "Last 30 Days" },
+                    { value: "all", label: "All Time" },
+                  ]}
+                />
               </div>
 
               {/* Feedback Filter */}
               <div className="md:col-span-4">
-                <div className="relative">
-                  <FiFilter className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                  <select
-                    value={feedbackFilter}
-                    onChange={(e) =>
-                      setFeedbackFilter(e.target.value as FeedbackFilter)
-                    }
-                    className="w-full pl-10 pr-4 py-2.5 appearance-none bg-muted/30 border border-input rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer hover:bg-muted/50 transition-colors"
-                  >
-                    <option value="all">All Feedback</option>
-                    <option value="positive">👍 Positive Only</option>
-                    <option value="negative">👎 Negative Only</option>
-                    <option value="no-feedback">No Feedback</option>
-                  </select>
-                </div>
+                <CustomSelect
+                  value={feedbackFilter}
+                  onChange={(val) => setFeedbackFilter(val as any)}
+                  icon={FiFilter}
+                  options={[
+                    { value: "all", label: "All Feedback" },
+                    {
+                      value: "positive",
+                      label: "Positive Only",
+                      icon: FiThumbsUp,
+                    },
+                    {
+                      value: "negative",
+                      label: "Negative Only",
+                      icon: FiThumbsDown,
+                    },
+                    { value: "no-feedback", label: "No Feedback" },
+                  ]}
+                />
               </div>
             </div>
 

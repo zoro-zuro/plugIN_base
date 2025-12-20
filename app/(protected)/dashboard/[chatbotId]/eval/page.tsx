@@ -11,10 +11,17 @@ import {
   FiClock,
   FiDatabase,
   FiTarget,
-  FiActivity,
   FiCpu,
   FiFileText,
 } from "react-icons/fi";
+import {
+  ScoreBadge,
+  getPerformanceLabel,
+  getScoreColor,
+  calculateOverallScore,
+  calculateTestScore,
+} from "@/components/ui/Helpers";
+import MetricCard from "@/components/ui/MetricCard";
 
 type TestCase = {
   question: string;
@@ -474,80 +481,6 @@ export default function EvalPage({
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-// Helpers
-function calculateOverallScore(overall: CustomOverall): number {
-  const score =
-    overall.semantic_similarity * 60 +
-    overall.keyword_recall * 20 + // Adjusted weight
-    ((overall.context_precision + overall.context_recall) / 2) * 20;
-  return Math.round(score);
-}
-
-function calculateTestScore(row: CustomRow): number {
-  const score =
-    // row.exact_match * 25 +  <-- REMOVED
-    row.semantic_similarity * 50 + // Increased weight
-    row.keyword_recall * 20 +
-    ((row.context_precision + row.context_recall) / 2) * 30;
-  return Math.round(score);
-}
-function getPerformanceLabel(score: number): string {
-  if (score >= 90) return "Excellent";
-  if (score >= 75) return "Good";
-  if (score >= 60) return "Fair";
-  if (score >= 40) return "Needs Improvement";
-  return "Poor";
-}
-
-function getScoreColor(score: number): string {
-  if (score >= 90)
-    return "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20";
-  if (score >= 75)
-    return "bg-blue-500/10 text-blue-600 border border-blue-500/20";
-  if (score >= 60)
-    return "bg-yellow-500/10 text-yellow-600 border border-yellow-500/20";
-  return "bg-red-500/10 text-red-600 border border-red-500/20";
-}
-
-function MetricCard({
-  title,
-  score,
-  icon,
-}: {
-  title: string;
-  score: number;
-  icon: any;
-}) {
-  return (
-    <div className="rounded-xl bg-card/50 border border-border p-4 flex flex-col justify-between">
-      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-        {icon} {title}
-      </div>
-      <div className="mt-2">
-        <div className="text-xl font-bold text-foreground mb-1">
-          {Math.round(score)}%
-        </div>
-        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all"
-            style={{ width: `${score}%` }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ScoreBadge({ score }: { score: number }) {
-  return (
-    <div
-      className={`px-3 py-1 rounded-full text-xs font-bold ${getScoreColor(score)}`}
-    >
-      {score}% {getPerformanceLabel(score)}
     </div>
   );
 }

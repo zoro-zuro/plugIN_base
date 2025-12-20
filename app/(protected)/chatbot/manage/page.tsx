@@ -14,7 +14,7 @@ import {
   FiLoader,
 } from "react-icons/fi";
 import { Zap } from "lucide-react";
-import { Doc, Id } from "@/convex/_generated/dataModel";
+import { Doc } from "@/convex/_generated/dataModel";
 import { useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 

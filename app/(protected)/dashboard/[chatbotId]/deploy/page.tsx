@@ -296,9 +296,6 @@ export default function ChatbotWidget() {
           <section className="space-y-4">
             <div className="flex justify-between items-center mb-4 ">
               <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                  1
-                </span>
                 Integration Code
               </h2>
               <div className="">
@@ -360,9 +357,6 @@ export default function ChatbotWidget() {
           {/* 4. Visual Preview */}
           <section className="pb-10">
             <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                3
-              </span>
               Preview
             </h2>
             <div className="relative h-[300px] w-full bg-muted/20 border border-dashed border-border rounded-2xl overflow-hidden">
