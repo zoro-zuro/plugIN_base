@@ -1,51 +1,45 @@
-# Welcome to your Convex + Next.js + Clerk app
+# PlugIN Base
 
-This is a [Convex](https://convex.dev/) project created with [`npm create convex`](https://www.npmjs.com/package/create-convex).
+A SaaS platform to create, manage, and embed AI chatbots on any website [web:12]. Design your agent in the dashboard, then add a simple widget snippet to your site for an instant branded assistant [web:18].
 
-After the initial setup (<2 minutes) you'll have a working full-stack app using:
+**Live Demo:** https://plug-in-base.vercel.app/  
+**Fast Alternative:** https://pluginbase.up.railway.app/
 
-- Convex as your backend (database, server logic)
-- [React](https://react.dev/) as your frontend (web page interactivity)
-- [Next.js](https://nextjs.org/) for optimized web hosting and page routing
-- [Tailwind](https://tailwindcss.com/) for building great looking accessible UI
-- [Clerk](https://clerk.com/) for authentication
+## Features
 
-## Get started
+- Multiple custom chatbots per account with unique configurations
+- RAG-ready: ground chatbots on your own content and context
+- Embeddable floating widget with instant load
+- Session tracking and analytics with geo lookup
+- Message logging with response times
+- User feedback collection (thumbs up/down)
+- Ready-made integration snippets for all major frameworks
 
-If you just cloned this codebase and didn't use `npm create convex`, run:
+## Tech Stack
 
-```
-npm install
-npm run dev
-```
+Built with Next.js, Convex (backend + database), Clerk (auth), Tailwind CSS, and deployed on Vercel [web:15].
 
-If you're reading this README on GitHub and want to use this template, run:
+## Getting Started
 
-```
-npm create convex@latest -- -t nextjs-clerk
-```
+Clone the repository and install dependencies, then configure your environment variables for Convex, Clerk, and OpenAI [web:13]. Run the Convex dev server and Next.js dev server simultaneously [web:16].
 
-Then:
+The app will be available at `http://localhost:3000`.
 
-1. Open your app. There should be a "Claim your application" button from Clerk in the bottom right of your app.
-2. Follow the steps to claim your application and link it to this app.
-3. Follow step 3 in the [Convex Clerk onboarding guide](https://docs.convex.dev/auth/clerk#get-started) to create a Convex JWT template.
-4. Uncomment the Clerk provider in `convex/auth.config.ts`
-5. Paste the Issuer URL as `CLERK_JWT_ISSUER_DOMAIN` to your dev deployment environment variable settings on the Convex dashboard (see [docs](https://docs.convex.dev/auth/clerk#configuring-dev-and-prod-instances))
+## Usage
 
-If you want to sync Clerk user data via webhooks, check out this [example repo](https://github.com/thomasballinger/convex-clerk-users-table/).
+Sign in and navigate to the Chatbots section to create a new bot [web:12]. Configure the name, welcome message, and optionally attach RAG data sources [web:18]. Test your bot using the built-in chat interface, then grab the embed snippet from the Integration tab and paste it into your website [web:12].
 
-## Learn more
+## Roadmap
 
-To learn more about developing your project with Convex, check out:
+- One-click deployment for Shopify and WordPress
+- Enhanced RAG evaluation tools
+- Per-chatbot theme customization
+- Rate limiting and billing
 
-- The [Tour of Convex](https://docs.convex.dev/get-started) for a thorough introduction to Convex principles.
-- The rest of [Convex docs](https://docs.convex.dev/) to learn about all Convex features.
-- [Stack](https://stack.convex.dev/) for in-depth articles on advanced topics.
+## Repository
 
-## Join the community
+https://github.com/zoro-zuro/plugIN_base
 
-Join thousands of developers building full-stack apps with Convex:
+## License
 
-- Join the [Convex Discord community](https://convex.dev/community) to get help in real-time.
-- Follow [Convex on GitHub](https://github.com/get-convex/), star and contribute to the open-source implementation of Convex.
+Currently unlicensed.
