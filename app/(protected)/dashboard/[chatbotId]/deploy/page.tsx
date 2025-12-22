@@ -162,7 +162,7 @@ export default function DeployPage({
     window.addEventListener("load", function () {
       setTimeout(function () {
         iframe.src = embedUrl;
-      }, 1500);
+      }, 100);
     });
 
     button.onclick = function () {
