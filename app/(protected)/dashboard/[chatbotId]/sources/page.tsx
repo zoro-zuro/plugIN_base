@@ -106,7 +106,7 @@ export default function SourcesPage({
             Knowledge Base
           </h1>
           <p className="text-xs md:text-sm text-muted-foreground mt-1 max-w-lg">
-            Manage the documents your agent uses.
+            Manage the documents your chatbot uses.
           </p>
         </div>
         <button
@@ -131,12 +131,11 @@ export default function SourcesPage({
               </span>
             </h3>
             <button
-              className="inline-flex items-center gap-2 text-sm font-semibold bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
+              className="inline-flex items-center sm:gap-2 text-sm font-semibold bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
               onClick={() => setIsModalOpen(true)}
             >
-              <FiPlus className="h-4 w-4" />{" "}
+              <FiPlus className="h-4 w-4" />
               <span className="hidden sm:inline">Upload File</span>
-              <span className="sm:hidden">Add</span>
             </button>
           </div>
 

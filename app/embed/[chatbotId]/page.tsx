@@ -260,7 +260,7 @@ export default function EmbedChatWidget({
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground">
+    <div className="flex flex-col h-screen bg-background text-foreground ">
       {/* Header */}
       <div className="border-b border-border bg-card/50 backdrop-blur-sm px-4 py-3">
         <div className="flex items-center gap-3 max-w-3xl mx-auto">
@@ -398,9 +398,9 @@ export default function EmbedChatWidget({
             <Link
               href="/"
               target="_blank"
-              className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
             >
-              <Zap size={9} />
+              <Zap size={11} />
               Powered by{" "}
               <span className="gradient-text font-semibold">PlugIn</span>
             </Link>

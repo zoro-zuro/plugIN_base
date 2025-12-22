@@ -197,7 +197,7 @@ export default function PlaygroundPage({
                   "Start chatting to test your agent&apos;s responses and accuracy."}
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
+              {/* <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
                 {[
                   "What is this document about?",
                   "Summarize the key points",
@@ -215,7 +215,7 @@ export default function PlaygroundPage({
                     {suggestion}
                   </button>
                 ))}
-              </div>
+              </div> */}
             </div>
           )}
 

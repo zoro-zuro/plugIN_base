@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FiEdit2, FiFile, FiLoader, FiTrash2 } from "react-icons/fi";
 import EditModal from "./EditModal";
-
+import { BsThreeDotsVertical } from "react-icons/bs";
 // --- FILE CARD COMPONENT (Mobile Optimized) ---
 function FileCard({
   document,
@@ -12,6 +12,7 @@ function FileCard({
 }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleDelete = async () => {
     if (confirm(`Delete ${document.fileName}?`)) {
@@ -36,7 +37,7 @@ function FileCard({
         currentDescription={document.fileDescription || ""}
       />
 
-      <div className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/40 hover:shadow-lg transition-all duration-300 gap-4 sm:gap-0">
+      <div className="group flex flex-col sm:flex-row justify-center  sm:items-center sm:justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/40 hover:shadow-lg transition-all duration-300 gap-4 sm:gap-0">
         {/* File Info */}
         <div className="flex items-start gap-4 flex-1 min-w-0">
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -55,15 +56,57 @@ function FileCard({
             </div>
             {/* Description Preview */}
             {document.fileDescription && (
-              <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 italic border-l-2 border-primary/20 pl-2">
+              <p className="text-xs w-full text-muted-foreground mt-1.5 line-clamp-4 italic border-l-2 border-primary/20 pl-2">
                 {document.fileDescription.slice(0, 100)}..
               </p>
+            )}
+          </div>
+
+          {/* Action Buttons Mobile threedots */}
+          <div className="relative sm:hidden">
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+              title="Edit Description"
+            >
+              <BsThreeDotsVertical size={18} />
+            </button>
+            {isMobileMenuOpen && (
+              <div className="absolute top-10 right-0 bg-card border border-border rounded-lg shadow-lg z-10 flex flex-col">
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setIsEditOpen(true);
+                  }}
+                  className="p-2 flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors border-border-b border-border/50"
+                  title="Edit Description"
+                >
+                  <FiEdit2 size={18} />
+                  <span>Edit</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    handleDelete();
+                  }}
+                  disabled={isDeleting}
+                  className="p-2 flex items-center gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors disabled:opacity-50"
+                  title="Delete file"
+                >
+                  {isDeleting ? (
+                    <FiLoader className="animate-spin" />
+                  ) : (
+                    <FiTrash2 size={18} />
+                  )}
+                  <span>Delete</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-2 sm:pl-4 sm:border-l sm:border-border/50 w-full sm:w-auto mt-2 sm:mt-0">
+        <div className="hidden sm:flex items-center justify-end gap-2 sm:pl-4 sm:border-l sm:border-border/50 w-full sm:w-auto mt-2 sm:mt-0">
           <button
             onClick={() => setIsEditOpen(true)}
             className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
