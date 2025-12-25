@@ -1,11 +1,11 @@
 // lib/tools.ts
-import { StructuredTool } from "@langchain/core/tools"; // ✅ Switch to StructuredTool
+import { StructuredTool } from "@langchain/core/tools";
 import { getPineconeVectorStore } from "./vectorStore";
 import { z } from "zod";
 
 const MAX_CONTEXT_CHARS = 2500;
 
-// ✅ Define schema outside the class for cleaner typing
+// ✅ Use "query" for consistency
 const SearchSchema = z.object({
   query: z.string().describe("The search query to find relevant documents"),
 });
@@ -14,15 +14,8 @@ export class KnowledgeBaseTool extends StructuredTool<typeof SearchSchema> {
   name = "knowledge_base_search";
 
   description = `Search through the user's knowledge base and uploaded documents.
-Use this tool when:
-- The user asks about specific data, files, policies, or information stored in documents.
-- You need factual information to answer the question.
+Use this tool when the user asks about specific data, files, policies, or information stored in documents.`;
 
-Do NOT use this for:
-- "Hi", "Hello", "Bye", "Thanks" (Standard greetings/closings).
-- General chitchat or questions clearly not about the company data.`;
-
-  // ✅ Assign schema here
   schema = SearchSchema;
 
   private namespace?: string;
@@ -33,9 +26,8 @@ Do NOT use this for:
     this.namespace = namespace;
   }
 
-  // ✅ The input is now guaranteed to be the Zod inferred type { query: string }
   async _call(input: z.infer<typeof SearchSchema>): Promise<string> {
-    const searchQuery = input.query; // No need to check for string type anymore
+    const searchQuery = input.query; // ✅ Fixed
 
     console.log(`🔧 TOOL: Searching knowledge base for: "${searchQuery}"`);
 

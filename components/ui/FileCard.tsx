@@ -35,6 +35,7 @@ function FileCard({
         onClose={() => setIsEditOpen(false)}
         documentId={document._id}
         currentDescription={document.fileDescription || ""}
+        currentKeywords={document.fileKeywords || []}
       />
 
       <div className="group flex flex-col sm:flex-row justify-center  sm:items-center sm:justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/40 hover:shadow-lg transition-all duration-300 gap-4 sm:gap-0">

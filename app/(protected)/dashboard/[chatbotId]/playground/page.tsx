@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, use } from "react";
 import { FiSend, FiRefreshCw, FiCpu } from "react-icons/fi";
-import { generateResponse } from "@/app/actions/message";
+import { generateResponse } from "@/app/actions/mannual_message";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Zap } from "lucide-react";

@@ -98,6 +98,7 @@ export default function DashboardClientLayout({
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="p-2 rounded-full text-muted-foreground hover:bg-muted transition-colors"
+            suppressHydrationWarning
           >
             {theme === "dark" ? <FiSun size={18} /> : <FiMoon size={18} />}
           </button>
@@ -140,6 +141,7 @@ export default function DashboardClientLayout({
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="hidden md:flex items-center p-2 rounded-full text-sm font-medium text-muted-foreground bg-muted hover:text-foreground hover:bg-muted/80 transition-all active:scale-95"
+              suppressHydrationWarning
             >
               {theme === "dark" ? <FiSun size={16} /> : <FiMoon size={16} />}
             </button>

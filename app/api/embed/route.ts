@@ -46,9 +46,9 @@ export async function POST(req: Request) {
     });
 
     // ✅ Track activity (non-blocking)
-    fetchMutation(api.documents.updateLastActive, {
-      chatbotId: chatbot.chatbotId,
-    }).catch((err) => console.warn("Activity tracking failed:", err));
+    // fetchMutation(api.documents.updateLastActive, {
+    //   chatbotId: chatbot.chatbotId,
+    // }).catch((err) => console.warn("Activity tracking failed:", err));
 
     // ✅ Generate response
     const result = await generateResponse(message, {

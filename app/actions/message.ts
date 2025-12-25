@@ -1,7 +1,9 @@
 "use server";
-
+// remove the file description add the keywords from each one dont repeat the keywords send the key word to the intent.
+// find a way more powerfull function to find is the input is trivial or not
 import { ChatGroq } from "@langchain/groq";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { createAgent } from "langchain";
 import {
   HumanMessage,
   AIMessage,
@@ -246,11 +248,11 @@ export const generateResponse = async (
       toolsToUse = tools;
     }
 
-    const agent = createReactAgent({
-      llm: modelWithTools,
+    const agent = createAgent({
+      model: modelWithTools,
       tools: toolsToUse,
-      checkpointSaver: checkpointer,
-      messageModifier: new SystemMessage(systemPromptToUse),
+      checkpointer: checkpointer,
+      systemPrompt: new SystemMessage(systemPromptToUse),
     });
 
     const config = {

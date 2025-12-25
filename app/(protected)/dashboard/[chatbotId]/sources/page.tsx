@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, use } from "react";
-import { FiFile, FiInfo, FiDatabase, FiPlus } from "react-icons/fi";
-import { useQuery, useMutation } from "convex/react";
+import { FiFile, FiDatabase, FiPlus } from "react-icons/fi";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import toast, { Toaster } from "react-hot-toast";
 import { Id } from "@/convex/_generated/dataModel";
@@ -41,8 +41,8 @@ export default function SourcesPage({
         documentId,
         chatbot.namespace,
       );
+      await deleteDoc({ documentId });
       if (response.success) {
-        await deleteDoc({ documentId });
         toast.success(`${fileName} deleted successfully.`);
       } else {
         throw new Error(response.error);
@@ -69,7 +69,7 @@ export default function SourcesPage({
       const deletedCount = await deleteAllNamespaceDocuments({
         namespace: chatbot.namespace,
       });
-      toast.success(`Reset complete: removed ${deletedCount} documents.`, {
+      toast.success(`Reset complete: removed ${deletedCount} documents. `, {
         id: toastId,
       });
     } catch (err) {

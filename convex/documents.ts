@@ -92,17 +92,6 @@ export const getChatbotById = query({
   },
 });
 
-// Get single chatbot by namespace
-export const getChatbotByNamespace = query({
-  args: { namespace: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("chatbots")
-      .withIndex("by_namespace", (q) => q.eq("namespace", args.namespace))
-      .first();
-  },
-});
-
 // Update chatbot with ALL new fields
 export const updateChatbot = mutation({
   args: {
@@ -148,9 +137,9 @@ export const deleteChatbot = mutation({
         .collect();
 
       for (const doc of docs) {
-        if (doc.storageId) {
-          await ctx.storage.delete(doc.storageId);
-        }
+        // if (doc.storageId) {
+        //   await ctx.storage.delete(doc.storageId);
+        // }
         await ctx.db.delete(doc._id);
       }
     }
@@ -161,62 +150,27 @@ export const deleteChatbot = mutation({
   },
 });
 
-// Increment message count
-export const incrementMessageCount = mutation({
-  args: { chatbotId: v.string() },
-  handler: async (ctx, args) => {
-    const chatbot = await ctx.db
-      .query("chatbots")
-      .withIndex("by_chatbotId", (q) => q.eq("chatbotId", args.chatbotId))
-      .first();
-
-    if (chatbot) {
-      await ctx.db.patch(chatbot._id, {
-        totalMessages: (chatbot.totalMessages || 0) + 1,
-        updatedAt: Date.now(),
-      });
-    }
-  },
-});
-
-// Update last active timestamp
-export const updateLastActive = mutation({
-  args: { chatbotId: v.string() },
-  handler: async (ctx, args) => {
-    const chatbot = await ctx.db
-      .query("chatbots")
-      .withIndex("by_chatbotId", (q) => q.eq("chatbotId", args.chatbotId))
-      .first();
-
-    if (chatbot) {
-      await ctx.db.patch(chatbot._id, {
-        lastActiveAt: Date.now(),
-        isConnected: true,
-        updatedAt: Date.now(),
-      });
-    }
-  },
-});
-
 // Store file in Convex storage
 export const generateUploadUrl = mutation(async (ctx) => {
   return await ctx.storage.generateUploadUrl();
 });
 
 // ✅ UPDATED: Save document metadata AND update chatbot description list
+// convex/documents.ts
+
 export const saveDocument = mutation({
   args: {
     userId: v.string(),
     fileName: v.string(),
     fileSize: v.number(),
     fileType: v.string(),
-    storageId: v.id("_storage"),
     chunksCount: v.number(),
     namespace: v.string(),
-    // Made description mandatory for this flow
+    fileKeywords: v.array(v.string()),
     fileDescription: v.string(),
   },
   handler: async (ctx, args) => {
+    // ✅ Insert document (auto-generates _id)
     const documentId = await ctx.db.insert("documents", {
       ...args,
       uploadedAt: Date.now(),
@@ -230,16 +184,16 @@ export const saveDocument = mutation({
       .first();
 
     if (chatbot) {
-      // Prepare the new description object
+      // ✅ Use new field names
       const newDocEntry = {
-        fileName: args.fileName,
-        fileDescription: args.fileDescription,
+        documentId: documentId, // ✅ Store as Id<"documents"> type
+        documentName: args.fileName,
+        documentDescription: args.fileDescription,
+        documentKeywords: args.fileKeywords,
       };
 
-      // Get existing list, or start fresh
       const currentDescriptions = chatbot.DocwithDescriptions || [];
 
-      // Update chatbot with new count and new description list
       await ctx.db.patch(chatbot._id, {
         totalDocuments: (chatbot.totalDocuments || 0) + 1,
         DocwithDescriptions: [...currentDescriptions, newDocEntry],
@@ -282,22 +236,46 @@ export const updateDocumentDescription = mutation({
   args: {
     documentId: v.id("documents"),
     fileDescription: v.string(),
+    fileKeywords: v.array(v.string()),
   },
   handler: async (ctx, args) => {
+    const doc = await ctx.db.get(args.documentId);
+
+    if (!doc) {
+      throw new Error("Document not found");
+    }
+
+    // Update document
     await ctx.db.patch(args.documentId, {
       fileDescription: args.fileDescription,
+      fileKeywords: args.fileKeywords,
     });
-    return { success: true };
-  },
-});
 
-// Get file URL from storage
-export const getFileUrl = query({
-  args: {
-    storageId: v.id("_storage"),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.storage.getUrl(args.storageId);
+    // ✅ Sync with chatbot
+    const chatbot = await ctx.db
+      .query("chatbots")
+      .withIndex("by_namespace", (q) => q.eq("namespace", doc.namespace))
+      .first();
+
+    if (chatbot && chatbot.DocwithDescriptions) {
+      const updatedDescriptions = chatbot.DocwithDescriptions.map((entry) => {
+        if (entry.documentId === args.documentId) {
+          return {
+            ...entry,
+            documentDescription: args.fileDescription,
+            documentKeywords: args.fileKeywords,
+          };
+        }
+        return entry;
+      });
+
+      await ctx.db.patch(chatbot._id, {
+        DocwithDescriptions: updatedDescriptions,
+        updatedAt: Date.now(),
+      });
+    }
+
+    return { success: true };
   },
 });
 
@@ -309,55 +287,33 @@ export const deleteDocument = mutation({
   handler: async (ctx, args) => {
     const doc = await ctx.db.get(args.documentId);
 
-    if (doc) {
-      // Delete from storage
-      if (doc.storageId) {
-        await ctx.storage.delete(doc.storageId);
-      }
-
-      // Update chatbot document count and remove from description list
-      const chatbot = await ctx.db
-        .query("chatbots")
-        .withIndex("by_namespace", (q) => q.eq("namespace", doc.namespace))
-        .first();
-
-      if (chatbot) {
-        // Filter out the deleted file from the list
-        const updatedDescriptions = (chatbot.DocwithDescriptions || []).filter(
-          (entry) => entry.fileName !== doc.fileName,
-        );
-
-        await ctx.db.patch(chatbot._id, {
-          totalDocuments: Math.max((chatbot.totalDocuments || 1) - 1, 0),
-          DocwithDescriptions: updatedDescriptions,
-          updatedAt: Date.now(),
-        });
-      }
-
-      // Delete document record
-      await ctx.db.delete(args.documentId);
+    if (!doc) {
+      throw new Error("Document not found");
     }
 
-    return true;
-  },
-});
+    // Update chatbot
+    const chatbot = await ctx.db
+      .query("chatbots")
+      .withIndex("by_namespace", (q) => q.eq("namespace", doc.namespace))
+      .first();
 
-// Delete all documents for a user (legacy)
-export const deleteAllUserDocuments = mutation({
-  args: { userId: v.string() },
-  handler: async (ctx, { userId }) => {
-    const docs = await ctx.db
-      .query("documents")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+    if (chatbot) {
+      // ✅ Filter by documentId
+      const updatedDescriptions = (chatbot.DocwithDescriptions || []).filter(
+        (entry) => entry.documentId !== args.documentId,
+      );
 
-    for (const doc of docs) {
-      if (doc.storageId) {
-        await ctx.storage.delete(doc.storageId);
-      }
-      await ctx.db.delete(doc._id);
+      await ctx.db.patch(chatbot._id, {
+        totalDocuments: Math.max((chatbot.totalDocuments || 1) - 1, 0),
+        DocwithDescriptions: updatedDescriptions,
+        updatedAt: Date.now(),
+      });
     }
-    return docs.length;
+
+    // Delete document
+    await ctx.db.delete(args.documentId);
+
+    return { success: true };
   },
 });
 
@@ -371,9 +327,9 @@ export const deleteAllNamespaceDocuments = mutation({
       .collect();
 
     for (const doc of docs) {
-      if (doc.storageId) {
-        await ctx.storage.delete(doc.storageId);
-      }
+      // if (doc.storageId) {
+      //   await ctx.storage.delete(doc.storageId);
+      // }
       await ctx.db.delete(doc._id);
     }
 
@@ -402,49 +358,126 @@ export const updateChunkCount = mutation({
   },
 });
 
-// ✅ NEW MUTATION to replace saving to the 'documents' table
-export const addDocumentDescriptionToChatbot = mutation({
-  args: {
-    chatbotId: v.string(),
-    fileName: v.string(),
-    fileDescription: v.string(),
-    fileSize: v.number(),
-    chunksCount: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const chatbot = await ctx.db
-      .query("chatbots")
-      .withIndex("by_chatbotId", (q) => q.eq("chatbotId", args.chatbotId))
-      .first();
+// All unused functions below are kept for reference but commented out
+// export const addDocumentDescriptionToChatbot = mutation({
+//   args: {
+//     chatbotId: v.string(),
+//     fileName: v.string(),
+//     fileDescription: v.string(),
+//     fileSize: v.number(),
+//     chunksCount: v.number(),
+//     fieldKeywords: v.array(v.string()),
+//   },
+//   handler: async (ctx, args) => {
+//     const chatbot = await ctx.db
+//       .query("chatbots")
+//       .withIndex("by_chatbotId", (q) => q.eq("chatbotId", args.chatbotId))
+//       .first();
 
-    if (!chatbot) {
-      console.error("Chatbot not found for description update");
-      return;
-    }
+//     if (!chatbot) {
+//       console.error("Chatbot not found for description update");
+//       return;
+//     }
 
-    const newDocEntry = {
-      fileName: args.fileName,
-      fileDescription: args.fileDescription,
-      fileSize: args.fileSize,
-      chunksCount: args.chunksCount,
-    };
+//     const newDocEntry = {
+//       fileName: args.fileName,
+//       fileDescription: args.fileDescription,
+//       fileKeywords: args.fieldKeywords,
+//     };
 
-    const currentDescriptions = chatbot.DocwithDescriptions || [];
+//     const currentDescriptions = chatbot.DocwithDescriptions || [];
 
-    // Optional: Prevent duplicates
-    const existingIndex = currentDescriptions.findIndex(
-      (d) => d.fileName === args.fileName,
-    );
-    if (existingIndex !== -1) {
-      currentDescriptions[existingIndex] = newDocEntry;
-    } else {
-      currentDescriptions.push(newDocEntry);
-    }
+//     // Optional: Prevent duplicates
+//     const existingIndex = currentDescriptions.findIndex(
+//       (d) => d.fileName === args.fileName,
+//     );
+//     if (existingIndex !== -1) {
+//       currentDescriptions[existingIndex] = newDocEntry;
+//     } else {
+//       currentDescriptions.push(newDocEntry);
+//     }
 
-    await ctx.db.patch(chatbot._id, {
-      totalDocuments: (chatbot.totalDocuments || 0) + 1,
-      DocwithDescriptions: currentDescriptions,
-      updatedAt: Date.now(),
-    });
-  },
-});
+//     await ctx.db.patch(chatbot._id, {
+//       totalDocuments: (chatbot.totalDocuments || 0) + 1,
+//       DocwithDescriptions: currentDescriptions,
+//       updatedAt: Date.now(),
+//     });
+//   },
+// });
+
+// Increment message count
+// export const incrementMessageCount = mutation({
+//   args: { chatbotId: v.string() },
+//   handler: async (ctx, args) => {
+//     const chatbot = await ctx.db
+//       .query("chatbots")
+//       .withIndex("by_chatbotId", (q) => q.eq("chatbotId", args.chatbotId))
+//       .first();
+
+//     if (chatbot) {
+//       await ctx.db.patch(chatbot._id, {
+//         totalMessages: (chatbot.totalMessages || 0) + 1,
+//         updatedAt: Date.now(),
+//       });
+//     }
+//   },
+// });
+
+// Update last active timestamp
+// export const updateLastActive = mutation({
+//   args: { chatbotId: v.string() },
+//   handler: async (ctx, args) => {
+//     const chatbot = await ctx.db
+//       .query("chatbots")
+//       .withIndex("by_chatbotId", (q) => q.eq("chatbotId", args.chatbotId))
+//       .first();
+
+//     if (chatbot) {
+//       await ctx.db.patch(chatbot._id, {
+//         lastActiveAt: Date.now(),
+//         isConnected: true,
+//         updatedAt: Date.now(),
+//       });
+//     }
+//   },
+// });
+
+// Delete all documents for a user (legacy)
+// export const deleteAllUserDocuments = mutation({
+//   args: { userId: v.string() },
+//   handler: async (ctx, { userId }) => {
+//     const docs = await ctx.db
+//       .query("documents")
+//       .withIndex("by_user", (q) => q.eq("userId", userId))
+//       .collect();
+
+//     for (const doc of docs) {
+//       if (doc.storageId) {
+//         await ctx.storage.delete(doc.storageId);
+//       }
+//       await ctx.db.delete(doc._id);
+//     }
+//     return docs.length;
+//   },
+// });
+
+// Get file URL from storage
+// export const getFileUrl = query({
+//   args: {
+//     storageId: v.id("_storage"),
+//   },
+//   handler: async (ctx, args) => {
+//     return await ctx.storage.getUrl(args.storageId);
+//   },
+// });
+
+// Get single chatbot by namespace
+// export const getChatbotByNamespace = query({
+//   args: { namespace: v.string() },
+//   handler: async (ctx, args) => {
+//     return await ctx.db
+//       .query("chatbots")
+//       .withIndex("by_namespace", (q) => q.eq("namespace", args.namespace))
+//       .first();
+//   },
+// });

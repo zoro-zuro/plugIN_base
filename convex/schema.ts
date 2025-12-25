@@ -5,10 +5,10 @@ export default defineSchema({
   documents: defineTable({
     userId: v.string(),
     fileName: v.string(),
-    fileDescription: v.optional(v.string()), // ✅ Added description to document record
+    fileDescription: v.string(),
+    fileKeywords: v.array(v.string()),
     fileSize: v.number(),
     fileType: v.string(),
-    storageId: v.id("_storage"),
     chunksCount: v.number(),
     uploadedAt: v.number(),
     namespace: v.string(),
@@ -50,8 +50,10 @@ export default defineSchema({
     DocwithDescriptions: v.optional(
       v.array(
         v.object({
-          fileName: v.string(),
-          fileDescription: v.string(),
+          documentId: v.id("documents"),
+          documentName: v.string(),
+          documentDescription: v.string(),
+          documentKeywords: v.array(v.string()),
         }),
       ),
     ),

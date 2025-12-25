@@ -6,6 +6,8 @@ import { preprocessDocument } from "@/lib/preprocessing";
 import { api } from "@/convex/_generated/api";
 import { fetchMutation } from "convex/nextjs";
 import { Id } from "@/convex/_generated/dataModel";
+import { generateKeywords } from "@/app/actions/generateKeywords";
+import { getCachedModel } from "@/lib/getChacedModel";
 
 // Helper function to process Pinecone in background
 async function processVectorsInBackground(
@@ -76,25 +78,36 @@ export const uploadDocumentWithDescription = async (
     const fileBuffer = Buffer.from(arrayBuffer);
 
     // --- STEP 1: FAST UPLOAD TO CONVEX (Critical Path - ~1-2s) ---
-    console.time("Convex Upload");
+    // console.time("Convex Upload");
 
-    const uploadUrl = await fetchMutation(api.documents.generateUploadUrl);
+    // const uploadUrl = await fetchMutation(api.documents.generateUploadUrl);
 
-    const uploadResponse = await fetch(uploadUrl, {
-      method: "POST",
-      headers: { "Content-Type": file.type || "application/octet-stream" },
-      body: fileBuffer,
-    });
+    // const uploadResponse = await fetch(uploadUrl, {
+    //   method: "POST",
+    //   headers: { "Content-Type": file.type || "application/octet-stream" },
+    //   body: fileBuffer,
+    // });
 
-    if (!uploadResponse.ok) throw new Error("Convex upload failed");
-    const { storageId } = await uploadResponse.json();
+    // if (!uploadResponse.ok) throw new Error("Convex upload failed");
+    // const { storageId } = await uploadResponse.json();
+
+    // Step 1b: Generate keywords from description
+
+    const model = getCachedModel(
+      "llama-3.3-70b-versatile",
+      0.5,
+      300,
+      process.env.GROQ_API_KEY,
+    );
+    const keywords = await generateKeywords(description, model);
 
     const documentId = await fetchMutation(api.documents.saveDocument, {
       userId: user.id,
       fileName,
       fileSize,
       fileType: fileName.split(".").pop() || "unknown",
-      storageId: storageId as Id<"_storage">,
+      fileKeywords: keywords,
+      // storageId: storageId as Id<"_storage">,
       chunksCount: 0, // Placeholder
       namespace,
       fileDescription: description,

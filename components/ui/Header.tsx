@@ -85,6 +85,7 @@ export function Header() {
               variant="ghost"
               onClick={toggleTheme}
               className="p-2.5 rounded-full hover:bg-accent text-foreground transition-colors"
+              suppressHydrationWarning
             >
               {theme === "dark" ? <FiSun size={18} /> : <FiMoon size={18} />}
             </Button>
@@ -111,6 +112,7 @@ export function Header() {
               <button
                 onClick={toggleTheme}
                 className="p-2 rounded-md hover:bg-accent text-foreground transition-colors"
+                suppressHydrationWarning
               >
                 {theme === "dark" ? <FiSun size={20} /> : <FiMoon size={20} />}
               </button>
