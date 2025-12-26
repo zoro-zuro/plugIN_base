@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, use } from "react";
 import { FiSend, FiRefreshCw, FiCpu } from "react-icons/fi";
-import { generateResponse } from "@/app/actions/mannual_message";
+import { generateResponse } from "@/app/actions/llmroutng_message";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Zap } from "lucide-react";
@@ -54,32 +54,35 @@ export default function PlaygroundPage({
     setIsLoading(true);
     const startTime = performance.now();
 
-    let historyForServer: { role: "user" | "assistant"; content: string }[] =
-      [];
-
-    setMessages((prev) => {
-      const userMessage: Message = {
-        id: `user-${Date.now()}`,
-        role: "user",
-        content: currentInput,
-        timestamp: new Date(),
-      };
-      const updated = [...prev, userMessage];
-      historyForServer = updated.map((m) => ({
-        role: m.role,
-        content: m.content,
+    // ✅ FIX: Build history from current messages state BEFORE updating
+    const historyForServer: { role: "user" | "assistant"; content: string }[] =
+      messages.slice(-10).map((msg) => ({
+        role: msg.role,
+        content: msg.content,
       }));
-      return updated;
-    });
+
+    console.log(`history sent to server: ${historyForServer.length}`);
+
+    // Add user message to UI
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: currentInput,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
 
     try {
       const sessionId = `playground-${chatbotId}`;
 
+      // ✅ Pass the history we built BEFORE state update
       const response = await generateResponse(currentInput, {
         chatbot,
+        test: true,
         sessionId,
         evalMode: false,
-        chatHistory: historyForServer,
+        chatHistory: historyForServer, // This now has the correct history
       });
 
       const endTime = performance.now();
@@ -89,13 +92,10 @@ export default function PlaygroundPage({
         throw new Error(response.error || "Failed to get response");
       }
 
-      // Handle memory/history logic if present
-      const answerContent =
-        response.memory && response.memory.length > 0
-          ? response.memory[response.memory.length - 1]?.content ||
-            response.answer ||
-            ""
-          : response.answer || "";
+      console.log(`history from response: ${response.memory?.length}`);
+
+      // Use the answer from response
+      const answerContent = response.answer || "";
 
       const assistantMessage: Message = {
         id: `assistant-${Date.now()}`,

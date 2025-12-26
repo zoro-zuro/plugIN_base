@@ -1,3 +1,6 @@
+// Remove needTool function entirely
+// Update generateResponse.ts
+
 "use server";
 
 import {
@@ -6,11 +9,10 @@ import {
   SystemMessage,
 } from "@langchain/core/messages";
 import { Doc } from "@/convex/_generated/dataModel";
-import { needTool } from "@/lib/needKB";
 import { buildSystemPrompt } from "@/lib/customPrompt";
 import { getCachedModel } from "@/lib/getChacedModel";
 import { KnowledgeBaseTool } from "@/lib/tools";
-import { query } from "@/convex/_generated/server";
+import { truncateSync } from "node:fs";
 
 type Message = {
   role: "user" | "assistant";
@@ -19,6 +21,7 @@ type Message = {
 
 type GenerateOptions = {
   chatHistory?: Message[];
+  test: boolean;
   chatbot: Doc<"chatbots">;
   sessionId?: string;
   evalMode?: boolean;
@@ -35,17 +38,16 @@ export const generateResponse = async (
   const {
     chatHistory = [],
     chatbot,
+    test = false,
     sessionId = "default",
     evalMode = false,
   } = options;
 
-  // --- Validation ---
   if (!prompt?.trim()) {
     return { success: false, error: "Prompt cannot be empty" };
   }
 
   try {
-    // --- Extract chatbot config ---
     const {
       namespace,
       modelName,
@@ -54,10 +56,9 @@ export const generateResponse = async (
       welcomeMessage,
       errorMessage,
       systemPrompt,
-      // DocwithDescriptions,
     } = chatbot;
-
-    // --- Validate required fields ---
+    console.log(`${test ? "It is not changing" : "It is changing"}`);
+    console.log(`chat history : ${JSON.stringify(chatHistory)}`);
     if (!namespace) {
       return {
         success: false,
@@ -65,51 +66,44 @@ export const generateResponse = async (
       };
     }
 
-    // --- Extract and dedupe KB keywords ---
-    // const keywords: string[] =
-    //   DocwithDescriptions?.flatMap((doc) => doc.documentKeywords || []) || [];
-    // const uniqueKeywords = Array.from(
-    //   new Set(keywords.map((k) => k.toLowerCase())),
-    // );
+    // Build KB description
+    // const kbDescription =
+    //   chatbot.DocwithDescriptions?.map((doc) => doc.documentDescription || "")
+    //     .filter(Boolean)
+    //     .join(". ") || "No specific knowledge base configured";
 
-    // console.log(
-    //   `📌 KB Keywords (${uniqueKeywords.length}):`,
-    //   uniqueKeywords.slice(0, 10),
-    // );
-
-    // --- Get cached model ---
+    // Get cached model
     const chatModel = getCachedModel(
       modelName || "llama-3.1-8b-instant",
       temperature ?? 0.5,
       maxTokens || 1000,
     );
 
-    // --- Route: Does this need KB? ---
-    const isToolNeeded = await needTool(prompt);
+    // STEP 1: Quick classification with the same model
+    console.log("🔀 Routing query...");
+    const isTrival = isTrivialInput(prompt);
+    console.log(!isTrival ? "🔍 KB retrieval enabled" : "💬 Generic mode");
 
-    console.log(isToolNeeded ? "🔍 KB retrieval enabled" : "💬 Generic mode");
-
-    // --- Retrieval (if needed) ---
+    // STEP 2: Retrieval (if needed)
     let context = "";
     let retrievedDocs: any[] = [];
 
-    if (isToolNeeded && !evalMode) {
+    if (!isTrival) {
       const kbTool = new KnowledgeBaseTool(namespace);
       try {
-        context = await kbTool._call({ query: prompt }); // ✅ Correct param name
+        context = await kbTool._call({ query: prompt });
         retrievedDocs = kbTool.lastDocs || [];
         console.log(
           `📄 Retrieved ${retrievedDocs.length} docs, ${context.length} chars`,
         );
       } catch (err) {
         console.error("⚠️ KB retrieval error:", err);
-        // Soft fail: continue without context
       }
     }
 
-    // --- Build system prompt ---
+    // STEP 3: Build system prompt
     const systemMessage = buildSystemPrompt(
-      isToolNeeded,
+      !isTrival,
       context,
       welcomeMessage || "Hello! How can I assist you?",
       errorMessage || "I'm sorry, something went wrong.",
@@ -117,22 +111,21 @@ export const generateResponse = async (
     );
 
     console.log("System prompt preview:", systemMessage.slice(0, 300));
-
-    // --- Prepare messages ---
-    // Last 6 messages for input (efficient context window usage)
+    console.log(`chathistory ${chatHistory.length}`);
+    // STEP 4: Prepare messages
     const recentHistory = chatHistory.slice(-6);
     let messages;
-
+    console.log(`recent history ${recentHistory.length}`);
     if (evalMode) {
-      // Eval: no history
       messages = [new SystemMessage(systemMessage), new HumanMessage(prompt)];
     } else {
-      // Normal: include recent history
       const historyMessages = recentHistory.map((msg) =>
         msg.role === "user"
           ? new HumanMessage(msg.content)
           : new AIMessage(msg.content),
       );
+
+      console.log(`historymsg ${historyMessages.length}`);
 
       messages = [
         new SystemMessage(systemMessage),
@@ -140,8 +133,8 @@ export const generateResponse = async (
         new HumanMessage(prompt),
       ];
     }
-
-    // --- Invoke model (direct, no agent/tools) ---
+    console.log(`Current History ${messages.length}`);
+    // STEP 5: Generate final response
     console.log(`⚡ Invoking model... (${Date.now() - startTime}ms elapsed)`);
     const response = await chatModel.invoke(messages);
 
@@ -152,8 +145,7 @@ export const generateResponse = async (
 
     console.log(`✅ Response generated: ${responseText.length} chars`);
 
-    // --- Update memory ---
-    // Keep last 10 messages in storage for caller to persist
+    // Update memory
     let updatedHistory: Message[] | undefined;
 
     if (!evalMode) {
@@ -182,7 +174,6 @@ export const generateResponse = async (
 
     const errMsg = error instanceof Error ? error.message : "Unknown error";
 
-    // Soft-fail for retrieval errors (don't show scary message to user)
     if (
       errMsg.toLowerCase().includes("tool") ||
       errMsg.toLowerCase().includes("retrieval")
@@ -212,3 +203,42 @@ export const generateResponse = async (
     };
   }
 };
+
+function isTrivialInput(text: string): boolean {
+  const t = text
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\s]/g, "");
+  const trivialPhrases = [
+    "hi",
+    "hello",
+    "hey",
+    "hola",
+    "greetings",
+    "good morning",
+    "good afternoon",
+    "bye",
+    "goodbye",
+    "cya",
+    "see ya",
+    "good night",
+    "have a good day",
+    "thanks",
+    "thank you",
+    "thx",
+    "cool",
+    "ok",
+    "okay",
+    "got it",
+    "great",
+    "who are you",
+    "what are you",
+    "are you real",
+    "help",
+  ];
+
+  return (
+    trivialPhrases.includes(t) ||
+    (t.length < 20 && trivialPhrases.some((phrase) => t.startsWith(phrase)))
+  );
+}

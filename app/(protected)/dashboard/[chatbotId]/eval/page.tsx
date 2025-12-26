@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, use } from "react";
-import { generateResponse } from "@/app/actions/message";
+import { generateResponse } from "@/app/actions/norouting_message";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
@@ -122,6 +122,7 @@ export default function EvalPage({
           // Call the server action
           const res = await generateResponse(tc.question, {
             evalMode: true,
+            test: true,
             chatbot: chatbot,
             sessionId: `eval-${chatbotId}`, // thread_id will now be randomized in backend
           });
