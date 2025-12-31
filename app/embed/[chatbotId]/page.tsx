@@ -6,6 +6,8 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Link from "next/link";
 import { Zap } from "lucide-react";
+import { flushSync } from "react-dom";
+import { StepProgress } from "@/components/ui/StepProgress";
 
 type Message = {
   id: string;
@@ -13,7 +15,11 @@ type Message = {
   content: string;
   messageId?: string | null;
   feedback?: "positive" | "negative" | null;
+  isStreaming?: boolean;
+  latencyMs?: number;
 };
+
+type StepStatus = "pending" | "active" | "complete" | "error";
 
 export default function EmbedChatWidget({
   params,
@@ -33,14 +39,23 @@ export default function EmbedChatWidget({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [streamingSteps, setStreamingSteps] = useState<
+    Record<string, StepStatus>
+  >({});
 
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const welcomeInitialized = useRef(false);
   const sessionIdRef = useRef<string | null>(null);
 
-  // Set welcome message ONLY ONCE
+  // Streaming refs
+  const streamTextRef = useRef("");
+  const streamRafRef = useRef<number | null>(null);
+  const streamIdRef = useRef<string | null>(null);
+
+  // 1. Initialize & Warmup
   useEffect(() => {
     if (chatbot && !welcomeInitialized.current) {
+      // Set Welcome Message
       setMessages([
         {
           id: "welcome",
@@ -49,13 +64,25 @@ export default function EmbedChatWidget({
         },
       ]);
       welcomeInitialized.current = true;
+
+      // ✅ FIRE WARMUP REQUEST (Makes first interaction faster)
+      fetch("/api/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          warmup: true,
+          chatbot: chatbot,
+        }),
+      }).catch((err) => console.log("Warmup failed silently", err));
     }
   }, [chatbot]);
 
-  // Get geolocation with multiple fallbacks
+  // 2. Geolocation & Session Tracking
   useEffect(() => {
     if (chatbot && !sessionIdRef.current) {
-      sessionIdRef.current = `session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      sessionIdRef.current = `session-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`;
 
       const getGeolocation = async () => {
         const apis = [
@@ -118,11 +145,11 @@ export default function EmbedChatWidget({
     }
   }, [chatbot, trackSession]);
 
+  // Scroll to bottom on message/step change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, streamingSteps]);
 
-  // Handle feedback click
   const handleFeedback = async (
     messageIndex: number,
     feedbackType: "positive" | "negative",
@@ -156,21 +183,29 @@ export default function EmbedChatWidget({
     if (!input.trim() || isLoading || !chatbot || !sessionIdRef.current) return;
 
     const currentInput = input.trim();
+    const userMsgId = `user-${Date.now()}`;
+    const streamId = `assistant-${Date.now()}`;
 
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: currentInput,
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    // UI Updates
     setInput("");
     setIsLoading(true);
+    setStreamingSteps({});
+    setMessages((prev) => [
+      ...prev,
+      { id: userMsgId, role: "user", content: currentInput },
+    ]);
+
+    // Reset Stream Refs
+    streamTextRef.current = "";
+    streamIdRef.current = streamId;
+    if (streamRafRef.current) cancelAnimationFrame(streamRafRef.current);
+    streamRafRef.current = null;
 
     const startTime = Date.now();
 
     try {
-      await trackMessage({
+      // 1. Track User Message (Async)
+      trackMessage({
         chatbotId: chatbot.chatbotId,
         namespace: chatbot.namespace,
         sessionId: sessionIdRef.current,
@@ -178,65 +213,144 @@ export default function EmbedChatWidget({
         content: currentInput,
       });
 
-      const response = await fetch("/api/embed", {
+      // 2. Start Request
+      const response = await fetch("/api/stream/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: currentInput,
-          history: messages.slice(-5),
+          history: messages
+            .slice(-5)
+            .map((m) => ({ role: m.role, content: m.content })),
           chatbot: chatbot,
           sessionId: sessionIdRef.current,
         }),
       });
 
-      const data = await response.json();
-      const responseTime = Date.now() - startTime;
+      if (!response.ok) throw new Error("Network response was not ok");
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No reader");
 
-      if (data.success) {
-        const messageId = await trackMessage({
-          chatbotId: chatbot.chatbotId,
-          namespace: chatbot.namespace,
-          sessionId: sessionIdRef.current,
-          role: "assistant",
-          content: data.answer,
-          responseTime,
+      const decoder = new TextDecoder();
+      let streamingMessageAdded = false;
+
+      // RAF Loop for smooth text rendering
+      const scheduleRafUpdate = () => {
+        if (streamRafRef.current) return;
+        streamRafRef.current = requestAnimationFrame(() => {
+          streamRafRef.current = null;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === streamId ? { ...m, content: streamTextRef.current } : m,
+            ),
+          );
         });
+      };
 
-        const assistantMessage: Message = {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          content: data.answer,
-          messageId: messageId as string | null,
-          feedback: null,
-        };
+      // 3. Read Stream
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-        setMessages((prev) => [...prev, assistantMessage]);
-      } else {
-        throw new Error(data.error);
+        const chunk = decoder.decode(value, { stream: true });
+        const parts = chunk.split(/(__PROGRESS__.*?__END__\n)/);
+
+        for (const part of parts) {
+          if (!part) continue;
+
+          // Handle Progress Steps
+          if (part.startsWith("__PROGRESS__")) {
+            const match = part.match(/__PROGRESS__(.+?)__END__/);
+            if (match) {
+              try {
+                const data = JSON.parse(match[1]);
+                setStreamingSteps((prev) => ({
+                  ...prev,
+                  [data.step]: data.status,
+                }));
+              } catch (e) {
+                console.error(e);
+              }
+            }
+            continue;
+          }
+
+          // Handle Text Content
+          streamTextRef.current += part;
+
+          if (!streamingMessageAdded) {
+            // FIRST CHUNK: Flush sync to replace steps with text bubble instantly
+            flushSync(() => {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: streamId,
+                  role: "assistant",
+                  content: streamTextRef.current,
+                  isStreaming: true,
+                },
+              ]);
+              setStreamingSteps({}); // Clear steps immediately
+            });
+            streamingMessageAdded = true;
+          } else {
+            scheduleRafUpdate();
+          }
+        }
       }
+
+      // 4. Finalize
+      if (streamRafRef.current) cancelAnimationFrame(streamRafRef.current);
+
+      const finalContent = streamTextRef.current;
+      const totalTime = Date.now() - startTime;
+
+      // Ensure final text is set and streaming is off (Triggers Shimmer effect end)
+      flushSync(() => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === streamId
+              ? {
+                  ...m,
+                  content: finalContent,
+                  isStreaming: false,
+                  latencyMs: totalTime,
+                }
+              : m,
+          ),
+        );
+      });
+
+      // 5. Track Assistant Response
+      const messageId = await trackMessage({
+        chatbotId: chatbot.chatbotId,
+        namespace: chatbot.namespace,
+        sessionId: sessionIdRef.current,
+        role: "assistant",
+        content: finalContent,
+        responseTime: totalTime,
+      });
+
+      // Update message with ID for feedback
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === streamId ? { ...m, messageId: messageId as string } : m,
+        ),
+      );
     } catch (error) {
       console.error("Chat error:", error);
-      const errorMessage: Message = {
-        id: `error-${Date.now()}`,
-        role: "assistant",
-        content:
-          chatbot?.errorMessage ||
-          "Sorry, something went wrong. Please try again.",
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-
-      if (sessionIdRef.current) {
-        await trackMessage({
-          chatbotId: chatbot.chatbotId,
-          namespace: chatbot.namespace,
-          sessionId: sessionIdRef.current,
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `error-${Date.now()}`,
           role: "assistant",
-          content: errorMessage.content,
-          responseTime: Date.now() - startTime,
-        }).catch(console.error);
-      }
+          content: chatbot?.errorMessage || "Sorry, something went wrong.",
+        },
+      ]);
     } finally {
       setIsLoading(false);
+      setStreamingSteps({});
+      streamIdRef.current = null;
     }
   };
 
@@ -260,7 +374,7 @@ export default function EmbedChatWidget({
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground ">
+    <div className="flex flex-col h-screen bg-background text-foreground">
       {/* Header */}
       <div className="border-b border-border bg-card/50 backdrop-blur-sm px-4 py-3">
         <div className="flex items-center gap-3 max-w-3xl mx-auto">
@@ -298,73 +412,68 @@ export default function EmbedChatWidget({
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{msg.content}</p>
+                  {/* Cursor for streaming */}
+                  {msg.isStreaming && (
+                    <span className="inline-block w-1.5 h-3.5 ml-1 bg-current opacity-70 animate-pulse align-middle" />
+                  )}
                 </div>
 
-                {/* Feedback */}
-                {msg.role === "assistant" && msg.id !== "welcome" && (
-                  <div className="flex items-center gap-1.5 px-1">
-                    {msg.feedback === null ? (
-                      <>
-                        <button
-                          onClick={() => handleFeedback(index, "positive")}
-                          className="p-1 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10 rounded transition-colors"
-                          aria-label="Good response"
-                        >
-                          <FiThumbsUp size={12} />
-                        </button>
-                        <button
-                          onClick={() => handleFeedback(index, "negative")}
-                          className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
-                          aria-label="Bad response"
-                        >
-                          <FiThumbsDown size={12} />
-                        </button>
-                      </>
-                    ) : (
-                      <span className="text-[10px] text-muted-foreground flex items-center gap-1 px-1.5 py-0.5 bg-muted rounded-full">
-                        {msg.feedback === "positive" ? (
-                          <>
-                            <FiThumbsUp
-                              size={10}
-                              className="text-emerald-600"
-                            />
-                            Helpful
-                          </>
-                        ) : (
-                          <>
-                            <FiThumbsDown
-                              size={10}
-                              className="text-destructive"
-                            />
-                            Not helpful
-                          </>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                )}
+                {/* Feedback Buttons */}
+                {msg.role === "assistant" &&
+                  !msg.isStreaming &&
+                  msg.id !== "welcome" && (
+                    <div className="flex items-center gap-1.5 px-1">
+                      {!msg.feedback ? (
+                        <>
+                          <button
+                            onClick={() => handleFeedback(index, "positive")}
+                            className="p-1 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10 rounded transition-colors"
+                            aria-label="Good response"
+                          >
+                            <FiThumbsUp size={12} />
+                          </button>
+                          <button
+                            onClick={() => handleFeedback(index, "negative")}
+                            className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                            aria-label="Bad response"
+                          >
+                            <FiThumbsDown size={12} />
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1 px-1.5 py-0.5 bg-muted rounded-full">
+                          {msg.feedback === "positive" ? (
+                            <>
+                              <FiThumbsUp
+                                size={10}
+                                className="text-emerald-600"
+                              />
+                              Helpful
+                            </>
+                          ) : (
+                            <>
+                              <FiThumbsDown
+                                size={10}
+                                className="text-destructive"
+                              />
+                              Not helpful
+                            </>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  )}
               </div>
             </div>
           ))}
 
-          {isLoading && (
-            <div className="flex justify-start animate-slide-up">
-              <div className="bg-card border border-border px-3.5 py-2.5 rounded-2xl rounded-bl-sm flex gap-1">
-                <span
-                  className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce"
-                  style={{ animationDelay: "0s" }}
-                />
-                <span
-                  className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce"
-                  style={{ animationDelay: "0.15s" }}
-                />
-                <span
-                  className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce"
-                  style={{ animationDelay: "0.3s" }}
-                />
-              </div>
+          {/* ✅ Step Progress: Replaces static loader */}
+          {isLoading && Object.keys(streamingSteps).length > 0 && (
+            <div className="animate-fade-in max-w-[85%]">
+              <StepProgress currentSteps={streamingSteps} />
             </div>
           )}
+
           <div ref={messagesEndRef} />
         </div>
       </div>

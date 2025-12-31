@@ -30,29 +30,28 @@
   --animate-slide-up: slideUp 0.5s ease-out;
   --animate-float: float 3s ease-in-out infinite;
   --animate-glow: glow 2s ease-in-out infinite alternate;
+  --animate-shimmer: shimmer 2s infinite; /* ✅ Add this */
 }
 
 /* Root colors - THEME: Purple/Violet SaaS */
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222 47% 11%; /* Dark Slate */
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
 
-    /* BRAND COLOR: Violet-600 (#7C3AED) */
     --primary: 262 83% 58%;
     --primary-foreground: 210 40% 98%;
 
-    /* SECONDARY: Slate-100 */
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222 47% 11%;
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 262 83% 96%; /* Very light violet */
+    --accent: 262 83% 96%;
     --accent-foreground: 222 47% 11%;
 
     --destructive: 0 84.2% 60.2%;
@@ -61,19 +60,17 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
 
-    /* RING: Matches Primary */
     --ring: 262 83% 58%;
-    --radius: 0.75rem; /* Rounded corners like Gifo */
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: 222 47% 11%; /* Deep Slate */
+    --background: 222 47% 11%;
     --foreground: 210 40% 98%;
 
     --card: 222 47% 11%;
     --card-foreground: 210 40% 98%;
 
-    /* BRAND COLOR DARK: Violet-500 (#8B5CF6) */
     --primary: 263 70% 50%;
     --primary-foreground: 210 40% 98%;
 
@@ -143,7 +140,7 @@
   }
   .card-hover:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 40px -10px rgba(124, 58, 237, 0.15); /* Violet shadow */
+    box-shadow: 0 10px 40px -10px rgba(124, 58, 237, 0.15);
   }
 
   .glow-border {
@@ -164,6 +161,7 @@
     pointer-events: none;
   }
 }
+/* After your @keyframes definitions, add this: */
 
 /* Animations */
 @keyframes fadeIn {
@@ -174,6 +172,7 @@
     opacity: 1;
   }
 }
+
 @keyframes slideUp {
   from {
     opacity: 0;
@@ -184,6 +183,7 @@
     transform: translateY(0);
   }
 }
+
 @keyframes float {
   0%,
   100% {
@@ -193,12 +193,51 @@
     transform: translateY(-10px);
   }
 }
+
 @keyframes glow {
   from {
     box-shadow: 0 0 20px rgba(124, 58, 237, 0.2);
   }
   to {
     box-shadow: 0 0 30px rgba(124, 58, 237, 0.5);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+/* Add this after your other @keyframes */
+
+@keyframes shimmerOnce {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ✅ ADD THESE UTILITY CLASSES */
+@layer utilities {
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+  }
+
+  .animate-slide-up-delayed {
+    animation: slideUp 0.5s ease-out 0.15s forwards;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
   }
 }
 
@@ -209,7 +248,7 @@ html {
 @layer utilities {
   /* Chrome, Edge, and Safari */
   ::-webkit-scrollbar {
-    width: 6px; /* Slightly thinner */
+    width: 6px;
     height: 6px;
   }
 
@@ -218,18 +257,16 @@ html {
   }
 
   ::-webkit-scrollbar-thumb {
-    /* Use a darker/lighter thumb based on mode for visibility */
     background-color: hsl(var(--foreground) / 0.2);
-    border-radius: 9999px; /* Pill shape */
+    border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background-color: hsl(var(--foreground) / 0.4); /* Darker on hover */
+    background-color: hsl(var(--foreground) / 0.4);
   }
 
   /* Firefox */
   * {
-    /* For Firefox, we use "auto" or "thin", but we can't fully control radius/transparency as easily */
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--foreground) / 0.2) transparent;
   }

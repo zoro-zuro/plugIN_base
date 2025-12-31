@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { generateResponse } from "@/app/actions/message";
-import { fetchMutation } from "convex/nextjs";
-import { api } from "@/convex/_generated/api";
 
 // ✅ Use nodejs runtime (Edge doesn't support Pinecone/LangChain)
 export const runtime = "nodejs";

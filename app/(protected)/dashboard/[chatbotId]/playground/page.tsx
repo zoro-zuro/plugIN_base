@@ -2,19 +2,23 @@
 
 import { useState, useRef, useEffect, use } from "react";
 import { FiSend, FiRefreshCw, FiCpu } from "react-icons/fi";
-import { generateResponse } from "@/app/actions/llmroutng_message";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Zap } from "lucide-react";
-import MessageBubble from "@/components/ui/MessageBubble";
+import { MessageBubble } from "@/components/ui/MessageBubble";
+import { StepProgress } from "@/components/ui/StepProgress";
+import { flushSync } from "react-dom";
 
 type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  isStreaming?: boolean;
   latencyMs?: number;
 };
+
+type StepStatus = "pending" | "active" | "complete" | "error";
 
 export default function PlaygroundPage({
   params,
@@ -22,15 +26,39 @@ export default function PlaygroundPage({
   params: Promise<{ chatbotId: string }>;
 }) {
   const { chatbotId } = use(params);
-
-  // ✅ Fetch chatbot details
   const chatbot = useQuery(api.documents.getChatbotById, { chatbotId });
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingSteps, setStreamingSteps] = useState<
+    Record<string, StepStatus>
+  >({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [streamingId, setStreamingId] = useState<string | null>(null);
+
+  // Refs for streaming state management
+  const streamIdRef = useRef<string | null>(null);
+  const streamTextRef = useRef("");
+  const streamRafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (chatbot) {
+      fetch("/api/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "HI",
+          history: [],
+          chatbot,
+          warmup: true,
+        }),
+      }).catch(() => {
+        console.log("Error in warmup");
+      });
+    }
+  }, [chatbot]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -52,18 +80,25 @@ export default function PlaygroundPage({
     if (textareaRef.current) textareaRef.current.style.height = "52px";
 
     setIsLoading(true);
+    setStreamingSteps({});
+
+    const streamId = `assistant-${Date.now()}`;
+    const streamStart = new Date();
+    setStreamingId(streamId);
+
+    // Reset refs
+    streamIdRef.current = streamId;
+    streamTextRef.current = "";
+    if (streamRafRef.current) cancelAnimationFrame(streamRafRef.current);
+    streamRafRef.current = null;
+
     const startTime = performance.now();
 
-    // ✅ FIX: Build history from current messages state BEFORE updating
-    const historyForServer: { role: "user" | "assistant"; content: string }[] =
-      messages.slice(-10).map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      }));
+    const historyForServer = messages.slice(-10).map((msg) => ({
+      role: msg.role,
+      content: msg.content,
+    }));
 
-    console.log(`history sent to server: ${historyForServer.length}`);
-
-    // Add user message to UI
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: "user",
@@ -74,51 +109,166 @@ export default function PlaygroundPage({
     setMessages((prev) => [...prev, userMessage]);
 
     try {
-      const sessionId = `playground-${chatbotId}`;
-
-      // ✅ Pass the history we built BEFORE state update
-      const response = await generateResponse(currentInput, {
-        chatbot,
-        test: true,
-        sessionId,
-        evalMode: false,
-        chatHistory: historyForServer, // This now has the correct history
+      const response = await fetch("/api/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: currentInput,
+          history: historyForServer,
+          chatbot,
+        }),
       });
 
-      const endTime = performance.now();
-      const latency = endTime - startTime;
+      if (!response.ok) throw new Error("Failed to get response");
 
-      if (!response.success) {
-        throw new Error(response.error || "Failed to get response");
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response body stream");
+
+      const decoder = new TextDecoder();
+      let firstTokenTime = 0;
+      let hasReceivedFirstToken = false;
+      let streamingMessageAdded = false;
+
+      // Efficient update function using RAF
+      const scheduleRafUpdate = () => {
+        if (streamRafRef.current != null) return;
+        streamRafRef.current = requestAnimationFrame(() => {
+          streamRafRef.current = null;
+          const id = streamIdRef.current;
+          if (!id) return;
+
+          const contentNow = streamTextRef.current;
+          setMessages((prev) =>
+            prev.map((m) => (m.id === id ? { ...m, content: contentNow } : m)),
+          );
+        });
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const parts = chunk.split(/(__PROGRESS__.*?__END__\n)/);
+
+        for (const part of parts) {
+          if (!part) continue;
+
+          if (part.startsWith("__PROGRESS__")) {
+            const jsonMatch = part.match(/__PROGRESS__(.+?)__END__/);
+            if (jsonMatch) {
+              try {
+                const progressData = JSON.parse(jsonMatch[1]);
+                setStreamingSteps((prev) => ({
+                  ...prev,
+                  [progressData.step]: progressData.status,
+                }));
+              } catch (e) {
+                console.error("Failed to parse progress:", e);
+              }
+            }
+            continue;
+          }
+
+          if (!hasReceivedFirstToken) {
+            firstTokenTime = performance.now();
+            hasReceivedFirstToken = true;
+            const ttft = firstTokenTime - startTime;
+            console.log(`⚡ TTFT: ${ttft.toFixed(0)}ms`);
+          }
+
+          streamTextRef.current += part;
+
+          if (!streamingMessageAdded) {
+            const initialText = streamTextRef.current;
+
+            // Immediate update for first chunk
+            flushSync(() => {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: streamId,
+                  role: "assistant",
+                  content: initialText,
+                  timestamp: streamStart,
+                  isStreaming: true,
+                },
+              ]);
+            });
+
+            streamingMessageAdded = true;
+
+            // Clear steps immediately
+            flushSync(() => setStreamingSteps({}));
+          } else {
+            // Smooth RAF updates for subsequent chunks
+            scheduleRafUpdate();
+          }
+        }
       }
 
-      console.log(`history from response: ${response.memory?.length}`);
+      // Ensure final content is painted
+      if (streamRafRef.current != null) {
+        cancelAnimationFrame(streamRafRef.current);
+        streamRafRef.current = null;
+      }
 
-      // Use the answer from response
-      const answerContent = response.answer || "";
+      const finalText = streamTextRef.current;
 
-      const assistantMessage: Message = {
-        id: `assistant-${Date.now()}`,
-        role: "assistant",
-        content: answerContent,
-        timestamp: new Date(),
-        latencyMs: latency,
-      };
+      // Final update with correct content
+      flushSync(() => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === streamId ? { ...m, content: finalText } : m,
+          ),
+        );
+      });
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      const ttft = hasReceivedFirstToken
+        ? firstTokenTime - startTime
+        : performance.now() - startTime;
+
+      // Mark streaming complete
+      flushSync(() => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === streamId
+              ? { ...m, isStreaming: false, latencyMs: ttft }
+              : m,
+          ),
+        );
+      });
+
+      setStreamingId(null);
+      streamIdRef.current = null;
     } catch (error) {
       console.error("=== FRONTEND: Chat error ===", error);
-      const errorMessage: Message = {
-        id: `error-${Date.now()}`,
-        role: "assistant",
-        content:
-          "Sorry, something went wrong. Please check your connection and try again.",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `error-${Date.now()}`,
+          role: "assistant" as const,
+          content: "Sorry, something went wrong. Please try again.",
+          timestamp: new Date(),
+        },
+      ]);
+
+      setStreamingSteps({});
+      setStreamingId(null);
+      streamIdRef.current = null;
       setInput(currentInput);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleReset = () => {
+    setMessages([]);
+    setStreamingId(null);
+    setStreamingSteps({});
+    if (textareaRef.current) {
+      textareaRef.current.focus();
     }
   };
 
@@ -126,13 +276,6 @@ export default function PlaygroundPage({
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
-    }
-  };
-
-  const handleReset = () => {
-    setMessages([]);
-    if (textareaRef.current) {
-      textareaRef.current.focus();
     }
   };
 
@@ -151,7 +294,6 @@ export default function PlaygroundPage({
 
   return (
     <div className="flex flex-col h-screen bg-background relative">
-      {/* Top Bar with Chatbot Info */}
       <div className="h-16 border-b border-border bg-card/80 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-fuchsia-600 flex items-center justify-center text-white shadow-sm">
@@ -180,10 +322,8 @@ export default function PlaygroundPage({
         </button>
       </div>
 
-      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto scroll-smooth">
         <div className="max-w-3xl mx-auto px-4 py-8">
-          {/* Welcome State */}
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center mt-20 text-center animate-slide-up">
               <div className="w-20 h-20 bg-primary/5 rounded-3xl flex items-center justify-center mb-6 ring-1 ring-primary/20">
@@ -194,57 +334,21 @@ export default function PlaygroundPage({
               </h3>
               <p className="text-muted-foreground max-w-sm mx-auto text-sm leading-relaxed mb-8">
                 {chatbot.description ||
-                  "Start chatting to test your agent&apos;s responses and accuracy."}
+                  "Start chatting to test your agent's responses and accuracy."}
               </p>
-
-              {/* <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
-                {[
-                  "What is this document about?",
-                  "Summarize the key points",
-                  "Who is the author?",
-                  "Explain like Im 5",
-                ].map((suggestion, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      setInput(suggestion);
-                      if (textareaRef.current) textareaRef.current.focus();
-                    }}
-                    className="text-xs text-muted-foreground bg-card border border-border hover:border-primary/50 hover:text-primary px-4 py-3 rounded-xl transition-all text-left"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div> */}
             </div>
           )}
 
           <div className="space-y-6">
             {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
+              <div key={message.id}>
+                <MessageBubble message={message} />
+              </div>
             ))}
 
-            {isLoading && (
-              <div className="flex items-start gap-3 animate-fade-in">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Zap size={14} className="text-primary fill-current" />
-                </div>
-                <div className="bg-muted/50 px-4 py-3 rounded-2xl rounded-tl-none">
-                  <div className="flex gap-1.5">
-                    <span
-                      className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce"
-                      style={{ animationDelay: "0ms" }}
-                    />
-                    <span
-                      className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce"
-                      style={{ animationDelay: "150ms" }}
-                    />
-                    <span
-                      className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce"
-                      style={{ animationDelay: "300ms" }}
-                    />
-                  </div>
-                </div>
+            {streamingId && Object.keys(streamingSteps).length > 0 && (
+              <div className="animate-fade-in">
+                <StepProgress currentSteps={streamingSteps} />
               </div>
             )}
           </div>
@@ -253,7 +357,6 @@ export default function PlaygroundPage({
         </div>
       </div>
 
-      {/* Input Area */}
       <div className="border-t border-border bg-background/80 backdrop-blur-md p-4 sticky bottom-0 z-20">
         <div className="max-w-3xl mx-auto relative">
           <div className="flex justify-between items-center">
