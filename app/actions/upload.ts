@@ -6,8 +6,8 @@ import { preprocessDocument } from "@/lib/preprocessing";
 import { api } from "@/convex/_generated/api";
 import { fetchMutation } from "convex/nextjs";
 import { Id } from "@/convex/_generated/dataModel";
-import { generateKeywords } from "@/app/actions/generateKeywords";
-import { getCachedModel } from "@/lib/getChacedModel";
+// import { generateKeywords } from "@/app/actions/generateKeywords";
+// import { getCachedModel } from "@/lib/getChacedModel";
 
 // Helper function to process Pinecone in background
 async function processVectorsInBackground(
@@ -93,20 +93,20 @@ export const uploadDocumentWithDescription = async (
 
     // Step 1b: Generate keywords from description
 
-    const model = getCachedModel(
-      "llama-3.3-70b-versatile",
-      0.5,
-      300,
-      process.env.GROQ_API_KEY,
-    );
-    const keywords = await generateKeywords(description, model);
+    // const model = getCachedModel(
+    //   "llama-3.3-70b-versatile",
+    //   0.5,
+    //   300,
+    //   process.env.GROQ_API_KEY,
+    // );
+    // const keywords = await generateKeywords(description, model);
 
     const documentId = await fetchMutation(api.documents.saveDocument, {
       userId: user.id,
       fileName,
       fileSize,
       fileType: fileName.split(".").pop() || "unknown",
-      fileKeywords: keywords,
+      // fileKeywords: keywords,
       // storageId: storageId as Id<"_storage">,
       chunksCount: 0, // Placeholder
       namespace,

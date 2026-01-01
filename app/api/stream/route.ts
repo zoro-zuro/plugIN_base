@@ -1,4 +1,5 @@
 import { generateResponseStream } from "@/app/actions/cerebras_stream";
+import { getPineconeVectorStore } from "@/lib/vectorStore";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,16 +16,26 @@ export async function POST(req: Request) {
   try {
     const { message, history, chatbot, warmup, sessionId } = await req.json();
 
-    // ✅ WARMUP: Fast path to wake up the Lambda/Model
     if (warmup === true) {
-      if (chatbot) {
-        // Fire and forget a trivial request to warm connections
-        generateResponseStream("hi", {
-          chatbot,
-          chatHistory: [],
-          sessionId: "warmup",
-        }).catch((e) => console.log("Warmup error (ignored)", e));
+      if (chatbot && chatbot.namespace) {
+        console.log(`🔥 Blocking Warmup for: ${chatbot.namespace}`);
+
+        // ✅ AWAIT BOTH to guarantee readiness
+        await Promise.allSettled([
+          // 1. Warmup Vector Store (Critical)
+          getPineconeVectorStore(chatbot.namespace),
+
+          // 2. Warmup LLM (Critical)
+          generateResponseStream("hi", {
+            chatbot,
+            chatHistory: [],
+            sessionId: "warmup",
+          }),
+        ]);
+
+        console.log("✅ Warmup Complete");
       }
+
       return new Response("ok", {
         status: 200,
         headers: { ...corsHeaders },

@@ -161,14 +161,20 @@ export default function DeployPage({
     // Preload after load
     window.addEventListener("load", function () {
       setTimeout(function () {
-        iframe.src = embedUrl;
-      }, 1500);
+          if (!iframe.src || iframe.src === "about:blank") {
+             iframe.src = embedUrl;
+        }
+      }, 100);
     });
 
     button.onclick = function () {
       isOpen = !isOpen;
-
+      
       if (isOpen) {
+      if (!iframe.src || iframe.src === "about:blank") {
+             iframe.src = embedUrl;
+        }
+        
         iframe.style.display = "block";
         requestAnimationFrame(function () {
           iframe.style.opacity = "1";

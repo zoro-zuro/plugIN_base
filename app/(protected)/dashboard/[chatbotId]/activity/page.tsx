@@ -282,7 +282,7 @@ export default function ActivityPage({
                     </h3>
                     {/* Add a simple legend/context if needed */}
                     <span className="text-xs text-muted-foreground">
-                      Chats per hour (
+                      Messages per hour (
                       {timeRange === "today" ? "24h" : timeRange})
                     </span>
                   </div>
@@ -363,7 +363,7 @@ export default function ActivityPage({
                             }}
                             // ✅ Custom Tooltip Content
                             formatter={(value: number) => [
-                              `${value} chats`,
+                              `${value} msg`,
                               "Volume",
                             ]}
                             labelFormatter={(label) => {

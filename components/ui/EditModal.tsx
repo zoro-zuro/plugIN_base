@@ -20,7 +20,6 @@ function EditModal({
   currentKeywords?: string[];
 }) {
   const [description, setDescription] = useState(currentDescription);
-  const [keywords, setKeywords] = useState(currentKeywords.join(", "));
   const [isSaving, setIsSaving] = useState(false);
   const updateDescription = useMutation(
     api.documents.updateDocumentDescription,
@@ -33,25 +32,9 @@ function EditModal({
     }
     setIsSaving(true);
     try {
-      if (currentDescription !== description) {
-        const response = await fetch("/api/generateKeyword", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: description }),
-        });
-
-        const { newKeywords } = await response.json();
-        setKeywords(newKeywords.join(", "));
-        console.log("Triggered to update the keywords!", keywords);
-      }
-      const keywordArray = keywords
-        .split(",")
-        .map((kw) => kw.trim())
-        .filter((kw) => kw.length > 0);
       await updateDescription({
         documentId,
         fileDescription: description,
-        fileKeywords: keywordArray,
       });
       toast.success("Description and keywords updated!");
       onClose();
@@ -65,10 +48,10 @@ function EditModal({
 
   if (!isOpen) return null;
 
-  const keywordCount = keywords
-    .split(",")
-    .map((k) => k.trim())
-    .filter((k) => k.length > 0).length;
+  // const keywordCount = keywords
+  //   .split(",")
+  //   .map((k) => k.trim())
+  //   .filter((k) => k.length > 0).length;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
@@ -107,7 +90,7 @@ function EditModal({
           </p>
         </div>
 
-        {/* Keywords Section */}
+        {/* Keywords Section
         <div className="mb-6">
           <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
             <FiTag className="text-primary" size={16} />
@@ -127,7 +110,7 @@ function EditModal({
             Comma-separated keywords for routing queries to this document. Edit
             to improve accuracy.
           </p>
-        </div>
+        </div> */}
 
         {/* Action Buttons */}
         <div className="flex gap-3">

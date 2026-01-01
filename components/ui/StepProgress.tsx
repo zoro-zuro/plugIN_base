@@ -22,8 +22,10 @@ const stepDefinitions: Record<
 
 export function StepProgress({
   currentSteps,
+  embed
 }: {
   currentSteps: Record<string, StepStatus>;
+  embed:boolean;
 }) {
   console.log("🎨 StepProgress render:", currentSteps);
 
@@ -58,7 +60,7 @@ export function StepProgress({
 
   return (
     <div className="flex items-start gap-3 animate-fade-in mb-2">
-      {!allComplete && (
+      {!allComplete && !embed && (
         <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
           <Loader2 size={14} className="text-primary animate-spin" />
         </div>

@@ -6,7 +6,7 @@ export default defineSchema({
     userId: v.string(),
     fileName: v.string(),
     fileDescription: v.string(),
-    fileKeywords: v.array(v.string()),
+    // fileKeywords: v.array(v.string()), this is removed currently
     fileSize: v.number(),
     fileType: v.string(),
     chunksCount: v.number(),
@@ -53,7 +53,7 @@ export default defineSchema({
           documentId: v.id("documents"),
           documentName: v.string(),
           documentDescription: v.string(),
-          documentKeywords: v.array(v.string()),
+          // documentKeywords: v.array(v.string()), this is removed currently
         }),
       ),
     ),

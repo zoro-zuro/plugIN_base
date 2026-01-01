@@ -142,18 +142,17 @@ function UploadModal({
         </div>
 
         {/* Info Banner */}
-        <div className="mb-6 p-3.5 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 rounded-lg flex gap-3">
+        {/* <div className="mb-6 p-3.5 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 rounded-lg flex gap-3">
           <FiAlertCircle
             className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5"
             size={18}
           />
           <div className="text-sm text-blue-800 dark:text-blue-300">
-            <strong className="font-semibold">How it works:</strong> Your
-            description is used to auto-generate routing keywords. These
+            <strong className="font-semibold">How it works:</strong>These
             keywords help the chatbot decide when to search this document. You
             can edit them later in document settings.
           </div>
-        </div>
+        </div> */}
 
         {/* Action Buttons */}
         <div className="flex gap-3">

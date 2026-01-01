@@ -27,7 +27,6 @@ export default function EmbedChatWidget({
   params: Promise<{ chatbotId: string }>;
 }) {
   const { chatbotId } = use(params);
-
   const chatbot = useQuery(api.documents.getChatbotById, {
     chatbotId: chatbotId,
   });
@@ -52,20 +51,25 @@ export default function EmbedChatWidget({
   const streamRafRef = useRef<number | null>(null);
   const streamIdRef = useRef<string | null>(null);
 
-  // 1. Initialize & Warmup
+  // 1. Initialize & Warmup (Optimized: Fire-Once Logic)
   useEffect(() => {
+    // Only proceed if we have data AND haven't run yet
     if (chatbot && !welcomeInitialized.current) {
+      welcomeInitialized.current = true; // Mark as done immediately
+
       // Set Welcome Message
       setMessages([
         {
           id: "welcome",
           role: "assistant",
           content: chatbot.welcomeMessage || "Hi! How can I help you today?",
+          feedback: null, // ✅ Explicit null to prevent feedback bug
         },
       ]);
-      welcomeInitialized.current = true;
 
-      // ✅ FIRE WARMUP REQUEST (Makes first interaction faster)
+      // ✅ FIRE WARMUP (Once per session)
+      // This sends the full chatbot object so the server can warm the correct namespace
+      console.log("🔥 Firing Warmup Request");
       fetch("/api/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -73,7 +77,9 @@ export default function EmbedChatWidget({
           warmup: true,
           chatbot: chatbot,
         }),
-      }).catch((err) => console.log("Warmup failed silently", err));
+      })
+        .then(() => console.log("Warmup signal sent"))
+        .catch((err) => console.log("Warmup failed silently", err));
     }
   }, [chatbot]);
 
@@ -470,7 +476,7 @@ export default function EmbedChatWidget({
           {/* ✅ Step Progress: Replaces static loader */}
           {isLoading && Object.keys(streamingSteps).length > 0 && (
             <div className="animate-fade-in max-w-[85%]">
-              <StepProgress currentSteps={streamingSteps} />
+              <StepProgress currentSteps={streamingSteps} embed={true} />
             </div>
           )}
 

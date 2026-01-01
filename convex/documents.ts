@@ -166,7 +166,7 @@ export const saveDocument = mutation({
     fileType: v.string(),
     chunksCount: v.number(),
     namespace: v.string(),
-    fileKeywords: v.array(v.string()),
+    // fileKeywords: v.array(v.string()),
     fileDescription: v.string(),
   },
   handler: async (ctx, args) => {
@@ -189,7 +189,7 @@ export const saveDocument = mutation({
         documentId: documentId, // ✅ Store as Id<"documents"> type
         documentName: args.fileName,
         documentDescription: args.fileDescription,
-        documentKeywords: args.fileKeywords,
+        // documentKeywords: args.fileKeywords,
       };
 
       const currentDescriptions = chatbot.DocwithDescriptions || [];
@@ -236,7 +236,7 @@ export const updateDocumentDescription = mutation({
   args: {
     documentId: v.id("documents"),
     fileDescription: v.string(),
-    fileKeywords: v.array(v.string()),
+    // fileKeywords: v.array(v.string()),
   },
   handler: async (ctx, args) => {
     const doc = await ctx.db.get(args.documentId);
@@ -248,7 +248,7 @@ export const updateDocumentDescription = mutation({
     // Update document
     await ctx.db.patch(args.documentId, {
       fileDescription: args.fileDescription,
-      fileKeywords: args.fileKeywords,
+      // fileKeywords: args.fileKeywords,
     });
 
     // ✅ Sync with chatbot
@@ -263,7 +263,7 @@ export const updateDocumentDescription = mutation({
           return {
             ...entry,
             documentDescription: args.fileDescription,
-            documentKeywords: args.fileKeywords,
+            // documentKeywords: args.fileKeywords,
           };
         }
         return entry;
