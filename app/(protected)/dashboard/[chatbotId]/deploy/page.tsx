@@ -168,7 +168,7 @@ export default function DeployPage({
 =======
         iframe.src = embedUrl;
 >>>>>>> 64758ac44de7ceb6a32cd469e2588b2be79ac89c
-      }, 100);
+      }, 500);
     });
 
     button.onclick = function () {
