@@ -161,9 +161,13 @@ export default function DeployPage({
     // Preload after load
     window.addEventListener("load", function () {
       setTimeout(function () {
+<<<<<<< HEAD
           if (!iframe.src || iframe.src === "about:blank") {
              iframe.src = embedUrl;
         }
+=======
+        iframe.src = embedUrl;
+>>>>>>> 64758ac44de7ceb6a32cd469e2588b2be79ac89c
       }, 100);
     });
 
