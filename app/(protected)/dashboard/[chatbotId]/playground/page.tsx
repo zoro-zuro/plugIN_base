@@ -348,7 +348,7 @@ export default function PlaygroundPage({
 
             {streamingId && Object.keys(streamingSteps).length > 0 && (
               <div className="animate-fade-in">
-                <StepProgress currentSteps={streamingSteps} />
+                <StepProgress currentSteps={streamingSteps} embed={false} />
               </div>
             )}
           </div>
