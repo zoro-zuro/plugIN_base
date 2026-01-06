@@ -1,4 +1,3 @@
-import { generateKeywords } from "@/app/actions/generateKeywords";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useMutation } from "convex/react";
@@ -47,11 +46,6 @@ function EditModal({
   };
 
   if (!isOpen) return null;
-
-  // const keywordCount = keywords
-  //   .split(",")
-  //   .map((k) => k.trim())
-  //   .filter((k) => k.length > 0).length;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">

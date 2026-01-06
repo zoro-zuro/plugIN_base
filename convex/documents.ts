@@ -35,7 +35,7 @@ export const createChatbot = mutation({
       // Initialize new fields with defaults
       systemPrompt: undefined,
       temperature: 0.5,
-      modelName: "llama-3.1-8b-instant",
+      modelName: "llama-3.3-70b",
       maxTokens: 500,
       welcomeMessage: "Hi! How can I help you today?",
       errorMessage: "Sorry, something went wrong. Please try again.",

@@ -7,15 +7,12 @@ import toast, { Toaster } from "react-hot-toast";
 import {
   FiSave,
   FiAlertTriangle,
-  FiInfo,
-  FiZap,
-  FiGlobe,
   FiSettings as FiSettingsIcon,
-  FiCpu,
   FiLoader,
+  FiTrash2,
 } from "react-icons/fi";
 import { useRouter } from "next/navigation";
-import Section from "@/components/ui/Section";
+
 import { InputField, SelectField, SliderField } from "@/components/ui/Field";
 
 export default function SettingsPage({
@@ -26,20 +23,16 @@ export default function SettingsPage({
   const { chatbotId } = use(params);
   const router = useRouter();
 
-  // Fetch chatbot details
   const chatbot = useQuery(api.documents.getChatbotById, { chatbotId });
   const updateChatbot = useMutation(api.documents.updateChatbot);
   const deleteChatbot = useMutation(api.documents.deleteChatbot);
-
-  // Form state
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    websiteUrl: "",
     systemPrompt: "",
     temperature: 0.5,
-    modelName: "llama-3.1-8b-instant",
-    maxTokens: 500,
+    modelName: "llama-3.1-8b",
+    maxTokens: 1000,
     welcomeMessage: "Hi! How can I help you today?",
     errorMessage: "Sorry, something went wrong. Please try again.",
     responseLanguage: "English",
@@ -48,18 +41,17 @@ export default function SettingsPage({
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Populate form when chatbot loads
   useEffect(() => {
     if (chatbot) {
       setFormData({
         name: chatbot.name || "",
         description: chatbot.description || "",
-        websiteUrl: chatbot.websiteUrl || "",
         systemPrompt: chatbot.systemPrompt || "",
         temperature: chatbot.temperature ?? 0.5,
-        modelName: chatbot.modelName || "llama-3.1-8b-instant",
-        maxTokens: chatbot.maxTokens ?? 500,
+        modelName: chatbot.modelName || "llama-3.1-8b",
+        maxTokens: chatbot.maxTokens ?? 1000,
         welcomeMessage:
           chatbot.welcomeMessage || "Hi! How can I help you today?",
         errorMessage:
@@ -91,13 +83,6 @@ export default function SettingsPage({
 
   const handleDelete = async () => {
     if (!chatbot) return;
-
-    const confirmed = confirm(
-      `Are you sure you want to delete "${chatbot.name}"? This action cannot be undone and will delete all associated documents and data.`,
-    );
-
-    if (!confirmed) return;
-
     setIsDeleting(true);
     try {
       await deleteChatbot({ id: chatbot._id });
@@ -111,15 +96,40 @@ export default function SettingsPage({
     }
   };
 
+  // Track if the form has been modified
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // ⚡️ Effect: Check for changes whenever formData updates
+  useEffect(() => {
+    if (!chatbot) return;
+
+    // Create a clean object of original values to compare against
+    const originalValues = {
+      name: chatbot.name || "",
+      description: chatbot.description || "",
+      systemPrompt: chatbot.systemPrompt || "",
+      temperature: chatbot.temperature ?? 0.5,
+      modelName: chatbot.modelName || "llama-3.1-8b",
+      maxTokens: chatbot.maxTokens ?? 1000,
+      welcomeMessage: chatbot.welcomeMessage || "Hi! How can I help you today?",
+      errorMessage:
+        chatbot.errorMessage ||
+        "Sorry, something went wrong. Please try again.",
+      responseLanguage: chatbot.responseLanguage || "English",
+      timezone: chatbot.timezone || "UTC",
+    };
+
+    // Compare strictly using JSON string (deep equality check)
+    const isDifferent =
+      JSON.stringify(formData) !== JSON.stringify(originalValues);
+
+    setHasChanges(isDifferent);
+  }, [formData, chatbot]);
+
   if (!chatbot) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4 animate-pulse">
-          <div className="h-12 w-12 bg-primary/20 rounded-xl" />
-          <p className="text-muted-foreground font-medium">
-            Loading settings...
-          </p>
-        </div>
+        <FiLoader className="animate-spin text-primary" size={32} />
       </div>
     );
   }
@@ -128,67 +138,59 @@ export default function SettingsPage({
     <div className="flex flex-col h-screen bg-background relative overflow-hidden">
       <Toaster position="top-right" />
 
-      {/* CSS to hide number input spinners */}
-      <style jsx global>{`
-        input[type="number"]::-webkit-inner-spin-button,
-        input[type="number"]::-webkit-outer-spin-button {
-          -webkit-appearance: none;
-          margin: 0;
-        }
-        input[type="number"] {
-          -moz-appearance: textfield;
-        }
-      `}</style>
+      {/* HEADER: Title Left, Actions Right */}
+      <div className="border-b border-border bg-card/80 backdrop-blur-md px-6 py-4 sticky top-0 z-30 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-lg text-primary">
+            <FiSettingsIcon size={20} />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-foreground tracking-tight">
+              Configuration
+            </h1>
+          </div>
+        </div>
 
-      {/* Header */}
-      <div className="border-b border-border bg-card/80 backdrop-blur-md px-8 py-6 sticky top-0 z-10">
-        <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-          <FiSettingsIcon className="text-primary" />
-          Configuration
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Customize how <strong>{chatbot.name}</strong> behaves, responds, and
-          interacts.
-        </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
+            title="Delete Agent"
+          >
+            <FiTrash2 size={20} />
+          </button>
+          <div className="h-6 w-px bg-border mx-1" />
+          <button
+            onClick={handleSave}
+            disabled={!hasChanges || isSaving}
+            className={`flex items-center gap-2 px-6 py-2 rounded-lg font-semibold transition-all duration-300 shadow-sm ${
+              hasChanges
+                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20 scale-105" // 🟢 Active: Visual Pop!
+                : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed" // ⚪️ Inactive: Muted
+            }`}
+          >
+            {isSaving ? <FiLoader className="animate-spin" /> : <FiSave />}
+            {isSaving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-8 scroll-smooth animate-fade-in">
-        <div className="max-w-4xl mx-auto space-y-8">
-          {/* Basic Information */}
-          <Section
-            icon={<FiInfo />}
-            title="General Info"
-            description="Basic identity and deployment details."
-          >
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <InputField
-                  label="Agent Name"
-                  value={formData.name}
-                  onChange={(value) =>
-                    setFormData({ ...formData, name: value })
-                  }
-                  placeholder="My Support Bot"
-                  required
-                  icon={
-                    <span className="text-xs font-bold text-muted-foreground">
-                      TXT
-                    </span>
-                  }
-                />
-
-                <InputField
-                  label="Website URL"
-                  value={formData.websiteUrl}
-                  onChange={(value) =>
-                    setFormData({ ...formData, websiteUrl: value })
-                  }
-                  placeholder="https://example.com"
-                  icon={<FiGlobe size={14} />}
-                />
-              </div>
-
+      {/* SINGLE SCROLLABLE CONTAINER */}
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
+        <div className="max-w-3xl mx-auto space-y-10 pb-20">
+          {/* 1. IDENTITY SECTION */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-foreground border-b border-border pb-2">
+              General Information
+            </h2>
+            <div className="grid grid-cols-1 gap-6">
+              <InputField
+                label="Agent Name"
+                value={formData.name}
+                onChange={(value) => setFormData({ ...formData, name: value })}
+                placeholder="My Support Bot"
+                required
+              />
               <InputField
                 label="Description"
                 value={formData.description}
@@ -200,14 +202,13 @@ export default function SettingsPage({
                 rows={2}
               />
             </div>
-          </Section>
+          </div>
 
-          {/* AI Configuration */}
-          <Section
-            icon={<FiZap />}
-            title="Model & Intelligence"
-            description="Fine-tune the AI's personality and cognitive parameters."
-          >
+          {/* 2. INTELLIGENCE SECTION */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-foreground border-b border-border pb-2">
+              Model & Intelligence
+            </h2>
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <SelectField
@@ -216,25 +217,39 @@ export default function SettingsPage({
                   onChange={(value) =>
                     setFormData({ ...formData, modelName: value })
                   }
-                  icon={<FiCpu size={14} />}
                   options={[
-                    {
-                      value: "llama-3.1-8b-instant",
-                      label: "Llama 3.1 8B (Fastest)",
-                    },
-                    {
-                      value: "llama-3.3-70b-versatile",
-                      label: "Llama 3.3 70B (Recommended)",
-                    },
-                    {
-                      value: "mixtral-8x7b-32768",
-                      label: "Mixtral 8x7B (Most Accurate)",
-                    },
+                    { value: "llama-3.1-8b", label: "Llama 3.1 8B (Fast)" },
+                    { value: "llama-3.3-70b", label: "Llama 3.3 70B (Smart)" },
+                    { value: "gpt-oss-120b", label: "GPT-OSS-120B (Pro)" },
                   ]}
                 />
+                <SliderField
+                  label="Creativity (Temperature)"
+                  value={formData.temperature}
+                  onChange={(value) =>
+                    setFormData({ ...formData, temperature: value })
+                  }
+                  min={0}
+                  max={1}
+                  step={0.1}
+                />
+              </div>
 
+              <InputField
+                label="System Prompt"
+                value={formData.systemPrompt}
+                onChange={(value) =>
+                  setFormData({ ...formData, systemPrompt: value })
+                }
+                placeholder="You are a helpful assistant..."
+                multiline
+                rows={6}
+                helperText="Define the core personality and rules for the AI."
+              />
+
+              <div className="max-w-xs">
                 <InputField
-                  label="Max Output Tokens"
+                  label="Max Tokens"
                   type="number"
                   value={formData.maxTokens.toString()}
                   onChange={(value) =>
@@ -243,21 +258,17 @@ export default function SettingsPage({
                       maxTokens: parseInt(value) || 500,
                     })
                   }
-                  helperText="Max length of response (100-2000)"
                 />
               </div>
+            </div>
+          </div>
 
-              <SliderField
-                label="Creativity (Temperature)"
-                value={formData.temperature}
-                onChange={(value) =>
-                  setFormData({ ...formData, temperature: value })
-                }
-                min={0}
-                max={1}
-                step={0.1}
-                helperText="0 = Factual & Precise, 1 = Creative & Unpredictable"
-              />
+          {/* 3. CHAT EXPERIENCE SECTION */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-foreground border-b border-border pb-2">
+              Chat Interface
+            </h2>
+            <div className="space-y-6">
               <InputField
                 label="Welcome Greeting"
                 value={formData.welcomeMessage}
@@ -267,35 +278,6 @@ export default function SettingsPage({
                 placeholder="Hi! How can I help you today?"
               />
 
-              <InputField
-                label="Fallback Error Message"
-                value={formData.errorMessage}
-                onChange={(value) =>
-                  setFormData({ ...formData, errorMessage: value })
-                }
-                placeholder="Sorry, I encountered an issue..."
-              />
-              <InputField
-                label="System Prompt"
-                value={formData.systemPrompt}
-                onChange={(value) =>
-                  setFormData({ ...formData, systemPrompt: value })
-                }
-                placeholder="You are a helpful customer support assistant for [Company Name]..."
-                multiline
-                rows={6}
-                helperText="The core instructions that define your agent's persona."
-              />
-            </div>
-          </Section>
-
-          {/* Conversation Settings */}
-          {/* <Section
-            icon={<FiMessageSquare />}
-            title="Chat Experience"
-            description="Customize the user-facing messages and localization."
-          >
-            <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <SelectField
                   label="Primary Language"
@@ -303,44 +285,30 @@ export default function SettingsPage({
                   onChange={(value) =>
                     setFormData({ ...formData, responseLanguage: value })
                   }
-                  icon={<FiGlobe size={14} />}
                   options={[
                     { value: "English", label: "English" },
                     { value: "Spanish", label: "Spanish" },
                     { value: "French", label: "French" },
                     { value: "German", label: "German" },
                     { value: "Hindi", label: "Hindi" },
+                    { value: "Japanese", label: "Japanese" },
                   ]}
                 />
-
                 <SelectField
                   label="Timezone"
                   value={formData.timezone}
                   onChange={(value) =>
                     setFormData({ ...formData, timezone: value })
                   }
-                  icon={<FiGlobe size={14} />}
                   options={[
                     { value: "UTC", label: "UTC" },
                     { value: "America/New_York", label: "New York (EST)" },
-                    {
-                      value: "America/Los_Angeles",
-                      label: "Los Angeles (PST)",
-                    },
                     { value: "Europe/London", label: "London (GMT)" },
                     { value: "Asia/Kolkata", label: "India (IST)" },
+                    { value: "Asia/Tokyo", label: "Tokyo (JST)" },
                   ]}
                 />
               </div>
-
-              <InputField
-                label="Welcome Greeting"
-                value={formData.welcomeMessage}
-                onChange={(value) =>
-                  setFormData({ ...formData, welcomeMessage: value })
-                }
-                placeholder="Hi! How can I help you today?"
-              />
 
               <InputField
                 label="Fallback Error Message"
@@ -351,58 +319,50 @@ export default function SettingsPage({
                 placeholder="Sorry, I encountered an issue..."
               />
             </div>
-          </Section> */}
+          </div>
 
-          {/* Danger Zone */}
-          <div className="border border-destructive/20 bg-destructive/5 rounded-xl p-6">
-            <div className="flex items-start gap-4">
-              <div className="p-2 bg-destructive/10 rounded-lg text-destructive">
-                <FiAlertTriangle size={20} />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-destructive">Danger Zone</h3>
-                <p className="text-sm text-muted-foreground mt-1 mb-4">
-                  Deleting this agent will permanently remove all training data,
-                  conversation history, and analytics.
-                </p>
-                <button
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="px-4 py-2 bg-card border border-destructive/30 text-destructive text-sm font-semibold rounded-lg hover:bg-destructive hover:text-white transition-all disabled:opacity-50"
-                >
-                  {isDeleting ? "Deleting..." : "Delete Agent Forever"}
-                </button>
+          {/* DELETE MODAL (Overlay) */}
+          {showDeleteConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+              <div className="bg-background border border-border rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+                <div className="p-6">
+                  <div className="flex items-center gap-3 text-destructive mb-4">
+                    <div className="p-2 bg-destructive/10 rounded-full">
+                      <FiAlertTriangle size={24} />
+                    </div>
+                    <h3 className="text-lg font-bold text-foreground">
+                      Delete Chatbot?
+                    </h3>
+                  </div>
+
+                  <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
+                    This action cannot be undone. This will permanently delete
+                    <span className="font-semibold text-foreground mx-1">
+                      {chatbot.name}
+                    </span>
+                    and remove all associated data and conversation history.
+                  </p>
+
+                  <div className="flex items-center gap-3 justify-end">
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      className="px-4 py-2 text-sm font-semibold bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 flex items-center gap-2"
+                    >
+                      {isDeleting && <FiLoader className="animate-spin" />}
+                      Delete Forever
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Bottom Padding for Sticky Footer */}
-          <div className="h-12" />
-        </div>
-      </div>
-
-      {/* Sticky Action Footer */}
-      <div className="border-t border-border bg-card/80 backdrop-blur-xl p-4 sticky bottom-0 z-20">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <span className="text-sm text-muted-foreground hidden sm:block">
-            Unsaved changes will be lost.
-          </span>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <button
-              onClick={() => window.location.reload()}
-              className="flex-1 sm:flex-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Discard
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 transition-all disabled:opacity-70"
-            >
-              {isSaving ? <FiLoader className="animate-spin" /> : <FiSave />}
-              {isSaving ? "Saving..." : "Save"}
-            </button>
-          </div>
+          )}
         </div>
       </div>
     </div>
