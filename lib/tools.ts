@@ -4,7 +4,7 @@ import { getPineconeVectorStore } from "./vectorStore";
 import { z } from "zod";
 
 const MAX_CONTEXT_CHARS = 2500;
-const MIN_RELEVANCE_SCORE = 0.4; // ✅ Filter low-quality results
+const MIN_RELEVANCE_SCORE = 0.2; // ✅ Filter low-quality results
 
 // ✅ Cache search results for identical queries (5 min TTL)
 const searchCache = new Map<string, { result: string; timestamp: number }>();
