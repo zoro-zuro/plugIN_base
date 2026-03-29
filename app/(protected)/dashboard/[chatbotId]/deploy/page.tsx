@@ -202,11 +202,10 @@ export default function RootLayout({ children }) {
                       <button
                         key={fw.id}
                         onClick={() => setSelectedFramework(fw.id)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap border ${
-                          selectedFramework === fw.id
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap border ${selectedFramework === fw.id
                             ? "bg-primary/20 text-primary border-primary/20 shadow-sm"
                             : "text-muted-foreground hover:text-gray-200 hover:bg-white/5 border-transparent"
-                        }`}
+                          }`}
                       >
                         <span className="text-base">{fw.icon}</span>
                         {fw.name}
@@ -246,10 +245,10 @@ export default function RootLayout({ children }) {
 
             <div className="relative h-[380px] w-full overflow-hidden rounded-2xl border border-dashed border-[#E2D9CC] bg-[#F7F4EF]">
               {/* Drafting Grid */}
-              <div className="absolute inset-0 opacity-[0.03]" 
-                style={{backgroundImage: 'radial-gradient(#1A1714 1px, transparent 1px)', backgroundSize: '24px 24px'}} 
+              <div className="absolute inset-0 opacity-[0.03]"
+                style={{ backgroundImage: 'radial-gradient(#1A1714 1px, transparent 1px)', backgroundSize: '24px 24px' }}
               />
-              
+
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-30">
                 <p className="rounded-lg bg-white/60 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-[#1A1714]">
                   Widget materialization zone
@@ -263,11 +262,11 @@ export default function RootLayout({ children }) {
                   <div className="pointer-events-none absolute inset-[-8px] rounded-full bg-radial from-[#EAB564]/30 to-transparent opacity-60 blur-md transition-all duration-500 group-hover:scale-150" />
 
                   <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-white/10 bg-[#1A1714] text-[#EAB564] shadow-[0_15px_35px_rgba(26,23,20,0.4)] transition-all duration-300 group-hover:-translate-y-1 group-hover:bg-[#EAB564] group-hover:text-[#1A1714]">
-                     <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
-                        <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z" />
-                        <circle cx="19" cy="5" r="1.5" />
-                        <circle cx="5" cy="19" r="1" opacity="0.6" />
-                     </svg>
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
+                      <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z" />
+                      <circle cx="19" cy="5" r="1.5" />
+                      <circle cx="5" cy="19" r="1" opacity="0.6" />
+                    </svg>
                   </div>
 
                   {/* Bubble */}
