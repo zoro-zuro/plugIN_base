@@ -142,52 +142,49 @@ export default function EmbedChatWidget({
           "https://freeipapi.com/api/json",
         ];
 
-        for (const apiUrl of apis) {
-          try {
-            const response = await fetch(apiUrl, {
-              signal: AbortSignal.timeout(5000),
-            });
+        try {
+          // Optimization: Race the APIs to get the fastest response
+          const fastestData = await Promise.any(
+            apis.map(url => 
+              fetch(url, { signal: AbortSignal.timeout(3000) })
+                .then(res => {
+                  if (!res.ok) throw new Error();
+                  return res.json();
+                })
+            )
+          );
 
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          let country = "Unknown";
+          let city = "Unknown";
 
-            const data = await response.json();
-
-            let country = "Unknown";
-            let city = "Unknown";
-
-            if (data.country_name) {
-              country = data.country_name;
-              city = data.city || "Unknown";
-            } else if (data.country) {
-              country = data.country;
-              city = data.city || "Unknown";
-            } else if (data.countryName) {
-              country = data.countryName;
-              city = data.cityName || "Unknown";
-            }
-
-            if (country !== "Unknown") {
-              await trackSession({
-                chatbotId: chatbot.chatbotId,
-                namespace: chatbot.namespace,
-                sessionId: sessionIdRef.current!,
-                userCountry: country,
-                userCity: city,
-              });
-              return;
-            }
-          } catch (error) {
-            continue;
+          if (fastestData.country_name) {
+            country = fastestData.country_name;
+            city = fastestData.city || "Unknown";
+          } else if (fastestData.country) {
+            country = fastestData.country;
+            city = fastestData.city || "Unknown";
+          } else if (fastestData.countryName) {
+            country = fastestData.countryName;
+            city = fastestData.cityName || "Unknown";
           }
-        }
 
-        await trackSession({
-          chatbotId: chatbot.chatbotId,
-          namespace: chatbot.namespace,
-          sessionId: sessionIdRef.current!,
-          userCountry: "Unknown",
-          userCity: "Unknown",
-        });
+          await trackSession({
+            chatbotId: chatbot.chatbotId,
+            namespace: chatbot.namespace,
+            sessionId: sessionIdRef.current!,
+            userCountry: country,
+            userCity: city,
+          });
+        } catch (error) {
+          // Final Fallback
+          await trackSession({
+            chatbotId: chatbot.chatbotId,
+            namespace: chatbot.namespace,
+            sessionId: sessionIdRef.current!,
+            userCountry: "Unknown",
+            userCity: "Unknown",
+          });
+        }
       };
 
       getGeolocation().catch((error) => {
@@ -437,7 +434,7 @@ export default function EmbedChatWidget({
           </div>
           <div className="h-px bg-[#E2D9CC] w-12 mx-auto" />
           <p className="text-sm text-[#8C7B68] font-medium leading-relaxed">
-            This intelligence agent is locked on this domain. Please list <span className="text-[#1A1714] font-bold">this domain</span> in your <span className="text-[#EAB564] font-bold italic">Settings</span> for access.
+            This intelligence chatbot is locked on this domain. Please list <span className="text-[#1A1714] font-bold">this domain</span> in your <span className="text-[#EAB564] font-bold italic">Settings</span> for access.
           </p>
           <Link href="/dashboard" target="_blank" className="inline-block mt-4 text-[10px] font-black uppercase tracking-widest text-[#1A1714] hover:text-[#EAB564] transition-colors bg-[#EAB564] px-6 py-3 rounded-xl shadow-lg shadow-[#EAB564]/20 font-bold">
              Go to Dashboard Settings →

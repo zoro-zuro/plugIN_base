@@ -165,7 +165,7 @@ export default function SettingsPage({
           <button
             onClick={() => setShowDeleteConfirm(true)}
             className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
-            title="Delete Agent"
+            title="Delete Chatbot"
           >
             <FiTrash2 size={20} />
           </button>
@@ -194,7 +194,7 @@ export default function SettingsPage({
             </h2>
             <div className="grid grid-cols-1 gap-6">
               <InputField
-                label="Agent Name"
+                label="Chatbot Name"
                 value={formData.name}
                 onChange={(value) => setFormData({ ...formData, name: value })}
                 placeholder="My Support Bot"
@@ -206,7 +206,7 @@ export default function SettingsPage({
                 onChange={(value) =>
                   setFormData({ ...formData, description: value })
                 }
-                placeholder="What is the primary purpose of this agent?"
+                placeholder="What is the primary purpose of this chatbot?"
                 multiline
                 rows={2}
               />

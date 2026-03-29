@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   FiMessageSquare,
   FiDatabase,
@@ -103,13 +104,6 @@ export default function DashboardClientLayout({
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="p-2 rounded-full text-muted-foreground hover:bg-muted transition-colors"
-            suppressHydrationWarning
-          >
-            {theme === "dark" ? <FiSun size={18} /> : <FiMoon size={18} />}
-          </button>
-          <button
             onClick={() => setIsSidebarOpen(true)}
             className="p-2 rounded-lg text-foreground hover:bg-muted transition-colors"
           >
@@ -132,28 +126,18 @@ export default function DashboardClientLayout({
           isSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
         } md:translate-x-0 fixed md:static inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transition-transform duration-300 ease-in-out flex flex-col`}
       >
-        {/* Header */}
-        <div className="h-20 flex justify-between items-center px-6 border-b border-border bg-card/50 backdrop-blur-xl">
-          <button
-            onClick={() => router.push("/")}
+        <div className="h-20 flex justify-between items-center px-6 border-b border-border bg-card/50 backdrop-blur-xl shrink-0">
+          <Link
+            href="/"
             className="flex items-center gap-2 group w-full outline-none"
           >
             <Logo className="h-8 w-8 group-hover:scale-110 transition-transform duration-500" />
             <span style={{ fontFamily: 'Georgia, serif' }} className="text-xl font-black tracking-tight text-[#1A1714]">
               PluginBase
             </span>
-          </button>
+          </Link>
 
           <div className="flex items-center gap-1">
-            {/* Desktop Theme Toggle */}
-            <button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="hidden md:flex items-center p-2 rounded-full text-sm font-medium text-muted-foreground bg-muted hover:text-foreground hover:bg-muted/80 transition-all active:scale-95"
-              suppressHydrationWarning
-            >
-              {theme === "dark" ? <FiSun size={16} /> : <FiMoon size={16} />}
-            </button>
-
             {/* ✅ Close Button (Mobile Only) */}
             <button
               onClick={() => setIsSidebarOpen(false)}
@@ -168,27 +152,37 @@ export default function DashboardClientLayout({
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto scrollbar-hide">
           {/* Custom Dropdown */}
           <div className="relative mb-6" ref={dropdownRef}>
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-border bg-card hover:bg-accent/50 transition-all duration-200 group ${isDropdownOpen ? "ring-2 ring-[#EAB564]/20 border-[#EAB564]" : ""}`}
-            >
-              <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-8 h-8 rounded-lg bg-[#1A1714] flex items-center justify-center text-[#EAB564] font-black shadow-md shrink-0">
-                  {chatbot?.name?.charAt(0).toUpperCase() || "B"}
-                </div>
-                <div className="text-left truncate">
-                  <p className="text-sm font-semibold text-foreground truncate max-w-[120px]">
-                    {chatbot?.name || "Select Bot"}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">
-                    {allChatbots?.length || 0} Bots
-                  </p>
+            {chatbot === undefined ? (
+              <div className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border bg-card animate-pulse">
+                <div className="w-8 h-8 rounded-lg bg-muted flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 w-20 bg-muted rounded" />
+                  <div className="h-2 w-10 bg-muted rounded" />
                 </div>
               </div>
-              <FiChevronDown
-                className={`text-muted-foreground transition-transform duration-300 ${isDropdownOpen ? "rotate-180" : ""}`}
-              />
-            </button>
+            ) : (
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-border bg-card hover:bg-accent/50 transition-all duration-200 group ${isDropdownOpen ? "ring-2 ring-[#EAB564]/20 border-[#EAB564]" : ""}`}
+              >
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="w-8 h-8 rounded-lg bg-[#1A1714] flex items-center justify-center text-[#EAB564] font-black shadow-md shrink-0">
+                    {chatbot?.name?.charAt(0).toUpperCase() || "B"}
+                  </div>
+                  <div className="text-left truncate">
+                    <p className="text-sm font-semibold text-foreground truncate max-w-[120px]">
+                      {chatbot?.name || "Select Bot"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">
+                      {allChatbots?.length || 0} Bots
+                    </p>
+                  </div>
+                </div>
+                <FiChevronDown
+                  className={`text-muted-foreground transition-transform duration-300 ${isDropdownOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+            )}
 
             {/* Dropdown Menu */}
             <div
@@ -231,19 +225,16 @@ export default function DashboardClientLayout({
             </div>
           </div>
 
-          {/* Menu Items */}
           <div className="space-y-1">
             {sidebarItems.map((item) => {
               const Icon = item.icon;
               const fullPath = `/dashboard/${chatbotId}/${item.path}`;
               const isActive = pathname === fullPath;
               return (
-                <button
+                <Link
                   key={item.path}
-                  onClick={() => {
-                    router.push(fullPath);
-                    setIsSidebarOpen(false);
-                  }}
+                  href={fullPath}
+                  onClick={() => setIsSidebarOpen(false)}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 font-medium group relative overflow-hidden ${
                     isActive
                       ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
@@ -258,7 +249,7 @@ export default function DashboardClientLayout({
                   {isActive && (
                     <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent pointer-events-none" />
                   )}
-                </button>
+                </Link>
               );
             })}
           </div>

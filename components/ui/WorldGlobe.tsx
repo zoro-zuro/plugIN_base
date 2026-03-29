@@ -1,13 +1,13 @@
 "use client";
 
+import { memo, useEffect, useRef, useState } from "react";
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-ignore – react-simple-maps ships its own types, suppress the missing-declaration warning
 import { ComposableMap, Geographies, Geography, Marker, Sphere, Graticule } from "react-simple-maps";
-import { useEffect, useRef, useState } from "react";
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
-export default function WorldGlobe({
+const WorldGlobe = memo(function WorldGlobe({
   markers = [],
   isLive = true,
   lightMode = false,
@@ -19,23 +19,29 @@ export default function WorldGlobe({
   isDarkCard?: boolean;
 }) {
   const [rotation, setRotation] = useState<[number, number, number]>([0, -20, 0]);
+  const [mounted, setMounted] = useState(false);
   const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const isDragging = useRef(false);
   const lastX = useRef(0);
   const rotationRef = useRef<[number, number, number]>([0, -20, 0]);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Auto-rotate when isLive, stop when Static
   useEffect(() => {
-    if (!isLive) {
+    if (!mounted || !isLive) {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       return;
     }
 
     const animate = () => {
-      if (!isDragging.current) {
+      // PERFORMANCE GUARD: Only rotate if window is focused
+      if (!isDragging.current && document.hasFocus()) {
         rotationRef.current = [
-          rotationRef.current[0] + 0.3,
+          rotationRef.current[0] + 0.2, // Decelerated for main-thread stability
           rotationRef.current[1],
           rotationRef.current[2],
         ];
@@ -70,6 +76,14 @@ export default function WorldGlobe({
   const handleMouseUp = () => {
     isDragging.current = false;
   };
+
+  if (!mounted) {
+    return (
+      <div className="relative w-full aspect-square bg-transparent rounded-full flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary/60 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full select-none">
@@ -181,4 +195,6 @@ export default function WorldGlobe({
       )}
     </div>
   );
-}
+});
+
+export default WorldGlobe;

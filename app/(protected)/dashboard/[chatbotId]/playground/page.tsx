@@ -285,7 +285,7 @@ export default function PlaygroundPage({
         <div className="flex flex-col items-center gap-4 animate-pulse">
           <div className="h-12 w-12 bg-primary/20 rounded-xl" />
           <p className="text-muted-foreground font-medium">
-            Connecting to Agent...
+            Connecting to Chatbot...
           </p>
         </div>
       </div>
@@ -334,7 +334,7 @@ export default function PlaygroundPage({
               </h3>
               <p className="text-muted-foreground max-w-sm mx-auto text-sm leading-relaxed mb-8">
                 {chatbot.description ||
-                  "Start chatting to test your agent's responses and accuracy."}
+                  "Start chatting to test your chatbot's responses and accuracy."}
               </p>
             </div>
           )}

@@ -129,7 +129,7 @@ const ProcessingStep = () => (
       </div>
     </div>
     <h3 style={{ fontFamily: 'Georgia, serif' }} className="text-xl sm:text-2xl font-black text-[#1A1714] mb-2">
-      Training your AI Agent...
+      Training your AI Chatbot...
     </h3>
     <p className="text-sm sm:text-base text-[#5C5448] max-w-sm mb-6">
       Chunking data, generating vectors, and optimizing for semantic search.
@@ -268,7 +268,7 @@ export default function Home() {
                 transition={{ delay: 0.2, duration: 0.8 }}
                 className="text-lg sm:text-xl text-[#5C5448] mb-12 max-w-lg leading-relaxed font-normal"
               >
-                Build custom AI agents trained on your documentation, PDFs, and website data. Plugin them into any website in seconds. No coding required.
+                Build custom AI chatbots trained on your documentation, PDFs, and website data. Plugin them into any website in seconds. No coding required.
               </motion.p>
 
               <motion.div
@@ -350,7 +350,7 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-6">
           <SectionHeading
             label="Capabilities"
-            title="Everything you need to build powerful AI agents"
+            title="Everything you need to build powerful AI chatbots"
             centered
             theme="light"
           />
@@ -370,7 +370,7 @@ export default function Home() {
               <SectionHeading
                 label="Process"
                 title="From your data to a live chatbot in minutes"
-                description="Three simple steps to build, customize, and launch your custom AI agent."
+                description="Three simple steps to build, customize, and launch your custom AI chatbot."
                 theme="dark"
               />
             </div>
@@ -461,7 +461,7 @@ export default function Home() {
               style={{ fontFamily: 'Georgia, serif' }}
               className="mx-auto max-w-3xl text-4xl sm:text-6xl font-black text-[#1A1714] leading-[1.1] mb-8"
             >
-              The end of silent documentation. Build your agent today.
+              The end of silent documentation. Build your chatbot today.
             </h2>
             <p className="mx-auto max-w-xl text-lg text-[#5C5448] mb-12">
               Transform your static data into a high-fidelity conversational engine. Join a new generation of builders engineering the next wave of RAG.
@@ -494,7 +494,7 @@ export default function Home() {
               <div className="flex flex-col gap-4">
                 <Link href="#features" className="text-[#8C7B68] hover:text-[#EAB564] transition-colors">Capabilities</Link>
                 <Link href="#how-it-works" className="text-[#8C7B68] hover:text-[#EAB564] transition-colors">The Protocol</Link>
-                <Link href="/chatbot/create" className="text-[#8C7B68] hover:text-[#EAB564] transition-colors">Create Agent</Link>
+                <Link href="/chatbot/create" className="text-[#8C7B68] hover:text-[#EAB564] transition-colors">Create Chatbot</Link>
                 <Link href="/chatbot/manage" className="text-[#8C7B68] hover:text-[#EAB564] transition-colors">Dashboard</Link>
               </div>
             </div>
@@ -502,8 +502,14 @@ export default function Home() {
             <div className="flex flex-col gap-6 text-sm">
               <h4 className="text-[#F7F4EF] font-bold uppercase tracking-widest text-xs">Social</h4>
               <div className="flex flex-col gap-4">
-                <Link href="#" className="text-[#8C7B68] hover:text-[#EAB564] transition-colors">GitHub</Link>
-                <Link href="#" className="text-[#8C7B68] hover:text-[#EAB564] transition-colors">Twitter</Link>
+                <a 
+                  href="https://github.com/zoro-zuro/plugIN_base" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[#8C7B68] hover:text-[#EAB564] transition-colors"
+                >
+                  GitHub
+                </a>
               </div>
             </div>
           </div>
@@ -511,7 +517,9 @@ export default function Home() {
 
         <div className="mx-auto max-w-7xl px-6 mt-24 pt-8 border-t border-[#EAB564]/5 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-xs text-[#5C5448]"> © 2026 PluginBase AI. All rights reserved. </p>
-          <p className="text-xs text-[#5C5448]"> Made with ♥️ by Shiek. </p>
+          <p className="text-xs text-[#5C5448]"> 
+            Made with ♥️ by <a href="https://sheik-portfolio-taupe.vercel.app/" target="_blank" rel="noopener noreferrer" className="hover:text-[#EAB564] transition-colors font-bold">Shiek</a>. 
+          </p>
         </div>
       </footer>
     </div>

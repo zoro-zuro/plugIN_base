@@ -4,20 +4,20 @@
   const BOT_ID = document.currentScript.getAttribute("data-bot-id");
 
   if (!BOT_ID) {
-    console.error("Nexus Widget: Missing data-bot-id attribute.");
+    console.error("PluginBase Widget: Missing data-bot-id attribute.");
     return;
   }
 
   // Define styles
     const styles = `
-    #nexus-widget-container {
+    #pluginbase-widget-container {
       position: fixed;
       bottom: 20px;
       right: 20px;
       z-index: 999999;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
-    #nexus-trigger {
+    #pluginbase-trigger {
       width: 60px;
       height: 60px;
       border-radius: 50%;
@@ -33,19 +33,19 @@
       outline: none;
       color: #EAB564;
     }
-    #nexus-trigger:hover {
+    #pluginbase-trigger:hover {
       transform: translateY(-4px) scale(1.08);
       background: #EAB564;
       color: #1A1714;
       box-shadow: 0 25px 60px rgba(234,181,100,0.3);
       border-color: #EAB564;
     }
-    #nexus-trigger svg {
+    #pluginbase-trigger svg {
       width: 32px;
       height: 32px;
       fill: currentColor;
     }
-    #nexus-window {
+    #pluginbase-window {
       position: absolute;
       bottom: 85px;
       right: 0;
@@ -65,18 +65,18 @@
       transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
       border: 1px solid rgba(226, 217, 204, 0.8);
     }
-    #nexus-window.active {
+    #pluginbase-window.active {
       transform: translateY(0) scale(1);
       opacity: 1;
       visibility: visible;
       pointer-events: auto;
     }
-    #nexus-iframe {
+    #pluginbase-iframe {
       width: 100%;
       height: 100%;
       border: none;
     }
-    #nexus-halo {
+    #pluginbase-halo {
       position: fixed;
       bottom: 25px;
       right: 25px;
@@ -90,12 +90,12 @@
       z-index: 999998;
       transition: all 0.6s ease;
     }
-    #nexus-widget-container:hover #nexus-halo {
+    #pluginbase-widget-container:hover #pluginbase-halo {
       opacity: 0.35;
       transform: scale(2.5);
     }
     @media (max-width: 480px) {
-      #nexus-window {
+      #pluginbase-window {
         width: calc(100vw - 32px);
         height: calc(100vh - 100px);
         bottom: 80px;
@@ -111,12 +111,12 @@
 
   // Create halo
   const halo = document.createElement("div");
-  halo.id = "nexus-halo";
+  halo.id = "pluginbase-halo";
   document.body.appendChild(halo);
 
   // Create container and Shadow DOM
   const container = document.createElement("div");
-  container.id = "nexus-widget-root";
+  container.id = "pluginbase-widget-root";
   document.body.appendChild(container);
 
   const shadow = container.attachShadow({ mode: "open" });
@@ -128,18 +128,18 @@
 
   // Layout
   const widgetContainer = document.createElement("div");
-  widgetContainer.id = "nexus-widget-container";
+  widgetContainer.id = "pluginbase-widget-container";
   
   const trigger = document.createElement("button");
-  trigger.id = "nexus-trigger";
+  trigger.id = "pluginbase-trigger";
   trigger.innerHTML = starIcon;
   
   const windowFrame = document.createElement("div");
-  windowFrame.id = "nexus-window";
+  windowFrame.id = "pluginbase-window";
   
   const iframe = document.createElement("iframe");
-  iframe.id = "nexus-iframe";
-  iframe.title = "Nexus Chatbot";
+  iframe.id = "pluginbase-iframe";
+  iframe.title = "PluginBase Intelligence";
   iframe.loading = "eager";
   iframe.src = `${BASE_URL.replace("/public", "")}/embed/${BOT_ID}`;
   

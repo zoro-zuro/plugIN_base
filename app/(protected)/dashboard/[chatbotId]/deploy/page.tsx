@@ -45,7 +45,7 @@ export default function DeployPage({
 
     switch (framework) {
       case "html":
-        return `<!-- Nexus Chatbot: Add this one-liner anywhere in your <body> -->
+        return `<!-- Add this one-liner anywhere in your <body> -->
 <script 
   src="${scriptSrc}" 
   data-bot-id="${chatbotId}" 
@@ -155,7 +155,7 @@ export default function RootLayout({ children }) {
                 Ready to launch?
               </h2>
               <p className="text-[#8C7B68] text-sm leading-relaxed max-w-md">
-                Your intelligence is now prepared. Test the deployment in a high-fidelity live environment before embedding the agent into your architecture.
+                Your intelligence is now prepared. Test the deployment in a high-fidelity live environment before embedding the chatbot into your architecture.
               </p>
               <div className="flex items-center gap-2 mt-5 text-[10px] font-black uppercase tracking-widest bg-white/60 p-2.5 rounded-lg border border-[#E2D9CC] w-fit shadow-inner">
                 <div className="w-1.5 h-1.5 rounded-full bg-[#EAB564] animate-ping" />
@@ -203,8 +203,8 @@ export default function RootLayout({ children }) {
                         key={fw.id}
                         onClick={() => setSelectedFramework(fw.id)}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap border ${selectedFramework === fw.id
-                            ? "bg-primary/20 text-primary border-primary/20 shadow-sm"
-                            : "text-muted-foreground hover:text-gray-200 hover:bg-white/5 border-transparent"
+                          ? "bg-primary/20 text-primary border-primary/20 shadow-sm"
+                          : "text-muted-foreground hover:text-gray-200 hover:bg-white/5 border-transparent"
                           }`}
                       >
                         <span className="text-base">{fw.icon}</span>

@@ -16,9 +16,17 @@ export const createChatbot = mutation({
     description: v.optional(v.string()),
     websiteUrl: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    const chatbotId = generateChatbotId();
-    const namespace = `${args.userId}_${chatbotId}`;
+    // Create initial allowed domain if website URL is provided
+    let allowedDomains: string[] = [];
+    if (args.websiteUrl) {
+      try {
+        const url = new URL(args.websiteUrl);
+        allowedDomains = [url.origin];
+      } catch (e) {
+        // Fallback for malformed URLs or simple text
+        allowedDomains = [args.websiteUrl];
+      }
+    }
 
     const id = await ctx.db.insert("chatbots", {
       userId: args.userId,
@@ -32,6 +40,8 @@ export const createChatbot = mutation({
       totalMessages: 0,
       totalDocuments: 0,
       DocwithDescriptions: [], // Initialize empty list
+      allowedDomains,
+      isDomainWhitelistingEnabled: false,
       // Initialize new fields with defaults
       systemPrompt: undefined,
       temperature: 0.5,

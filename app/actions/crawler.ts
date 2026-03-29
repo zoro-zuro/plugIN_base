@@ -76,7 +76,7 @@ export const crawlAndTrainUrl = async (
   try {
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; NexusBot/1.0; +https://pluginbase.ai)",
+        "User-Agent": "Mozilla/5.0 (compatible; PluginBaseBot/1.0; +https://pluginbase.ai)",
       },
     });
     

@@ -60,18 +60,19 @@ export default function CreateChatbotPage() {
 
   return (
     <div className="min-h-screen mt-15 flex items-center justify-center py-10 px-4 bg-background relative overflow-hidden">
-      {/* Background Decor */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
+      {/* Dynamic Background Atmospheric — High-elevation contrast */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-primary/20 rounded-full blur-[160px] pointer-events-none opacity-40 animate-pulse" />
+      <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[140px] pointer-events-none opacity-30" />
 
       <div className="max-w-2xl w-full mx-auto relative z-10">
-        <div className="bg-card border border-border rounded-3xl shadow-2xl shadow-primary/5 p-8 md:p-10 animate-slide-up">
+        <div className="bg-white border border-[#E2D9CC]/80 rounded-[2.5rem] shadow-[0_32px_100px_-20px_rgba(26,23,20,0.14)] p-8 md:p-12 animate-slide-up ring-1 ring-[#1A1714]/[0.02]">
           {/* Header */}
           <div className="mb-10 text-center">
             <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-primary/10 text-primary mb-6 ring-1 ring-primary/20 shadow-lg shadow-primary/10">
               <Zap className="h-8 w-8" />
             </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-3 text-foreground tracking-tight">
-              Create New Agent
+              Create New Chatbot
             </h1>
             <p className="text-muted-foreground text-lg">
               Give your new AI assistant an identity.
@@ -174,11 +175,11 @@ export default function CreateChatbotPage() {
               {isCreating ? (
                 <>
                   <FiLoader className="animate-spin h-5 w-5" />
-                  Initializing Agent...
+                  Initializing Chatbot...
                 </>
               ) : (
                 <>
-                  Create Agent <FiCheck className="h-5 w-5" />
+                  Create Chatbot <FiCheck className="h-5 w-5" />
                 </>
               )}
             </button>

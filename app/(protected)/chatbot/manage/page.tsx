@@ -95,7 +95,7 @@ export default function ManageChatbotsPage() {
               </span>
             </motion.div>
             <h1 style={{ fontFamily: 'Georgia, serif' }} className="text-3xl font-black text-[#1A1714] tracking-tight">
-              My Agents
+              My Chatbots
             </h1>
           </div>
           
@@ -104,7 +104,7 @@ export default function ManageChatbotsPage() {
             className="group px-6 py-3 bg-[#1A1714] text-[#F7F4EF] rounded-xl font-bold text-[11px] uppercase tracking-widest hover:bg-[#2E2820] transition-all flex items-center gap-2 shadow-[0_10px_30px_rgba(26,23,20,0.15)] active:scale-95"
           >
             <FiPlus size={14} className="text-[#EAB564]" />
-            New Agent
+            New Chatbot
           </Link>
         </header>
 
@@ -131,9 +131,9 @@ export default function ManageChatbotsPage() {
                 <Logo className="h-8 w-8 opacity-20" />
               </div>
               <h2 style={{ fontFamily: 'Georgia, serif' }} className="text-xl font-black mb-2 text-[#1A1714]">The registry is empty</h2>
-              <p className="text-sm text-[#5C5448] mb-8 max-w-xs">No agents deployed in this sector. Deploy your first conversational engine to begin.</p>
+              <p className="text-sm text-[#5C5448] mb-8 max-w-xs">No chatbots deployed in this sector. Deploy your first conversational engine to begin.</p>
               <Link href="/chatbot/create" className="px-8 py-3.5 bg-[#EAB564] text-[#1A1714] rounded-xl font-black uppercase tracking-widest text-[10px] hover:shadow-xl hover:shadow-[#EAB564]/30 transition-all">
-                Initialize Search Agent
+                Initialize Chatbot
               </Link>
             </motion.div>
           ) : (
@@ -167,7 +167,7 @@ export default function ManageChatbotsPage() {
                       {chatbot.name}
                     </h3>
                     <p className="text-[12px] text-[#5C5448] line-clamp-2 leading-relaxed opacity-75">
-                      {chatbot.description || "Active high-fidelity RAG agent deployment."}
+                      {chatbot.description || "Active high-fidelity RAG chatbot deployment."}
                     </p>
                   </div>
 
