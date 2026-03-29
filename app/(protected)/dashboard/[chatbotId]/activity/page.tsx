@@ -15,17 +15,19 @@ import {
   FiBarChart2,
 } from "react-icons/fi";
 import {
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Cell,
 } from "recharts";
 import { CustomSelect } from "@/components/ui/Field";
 import SessionGroup from "@/components/ui/SessionGroup";
 import StatCard from "@/components/ui/StateCard";
+import WorldGlobe from "@/components/ui/WorldGlobe";
 
 type Tab = "chats" | "logs";
 type FeedbackFilter = "all" | "positive" | "negative" | "no-feedback";
@@ -47,9 +49,14 @@ export default function ActivityPage({
 }) {
   const { chatbotId } = use(params);
   const [activeTab, setActiveTab] = useState<Tab>("chats");
-  const [timeRange, setTimeRange] = useState<"today" | "week" | "month">(
+  const [isGlobeLive, setIsGlobeLive] = useState(true);
+  const [timeRange, setTimeRange] = useState<"today" | "week" | "month" | "custom">(
     "today",
   );
+  const [customRange, setCustomRange] = useState({
+    start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   // ✅ Logs filters
@@ -65,6 +72,12 @@ export default function ActivityPage({
   // ✅ Fix: Calculate stable dates using useMemo
   // This ensures "now" is calculated once when timeRange changes, not every render
   const { startDate, endDate } = useMemo(() => {
+    if (timeRange === "custom") {
+       return {
+         startDate: new Date(customRange.start).getTime(),
+         endDate: new Date(customRange.end).getTime() + 24 * 60 * 60 * 1000 - 1
+       };
+    }
     const now = Date.now();
     const ranges = {
       today: now - 24 * 60 * 60 * 1000,
@@ -72,20 +85,28 @@ export default function ActivityPage({
       month: now - 30 * 24 * 60 * 60 * 1000,
     };
     return { startDate: ranges[timeRange], endDate: now };
-  }, [timeRange]); // Only recalculate when user changes the filter
+  }, [timeRange, customRange]); 
 
   // Use a query hook that matches your backend API types
   const analytics = useQuery(api.analytics.getChatAnalytics, {
     chatbotId,
-    startDate, // Uses memoized value
-    endDate, // Uses memoized value
+    startDate,
+    endDate,
     timezone: userTimeZone,
   });
+
+  // ✅ Real-time live session markers (last 5 min) — Convex auto-updates this reactively
+  const liveData = useQuery(api.analytics.getActiveSessionMarkers, { chatbotId });
 
   const logs = useQuery(api.analytics.getMessageLogs, {
     chatbotId,
     limit: 1000,
   });
+
+  // Pick markers: if Live mode → real-time active sessions; if Static → historical period
+  const globeMarkers = isGlobeLive
+    ? (liveData?.markers ?? [])
+    : (analytics?.locationMarkers ?? []);
 
   // ✅ FILTER AND GROUP LOGS BY SESSION
   const groupedLogs = useMemo(() => {
@@ -174,7 +195,7 @@ export default function ActivityPage({
   }
 
   return (
-    <div className="md:pb-8 pb-8 pt-8 px-4 md:px-0 animate-fade-in">
+    <div className="md:pb-8 pb-8 pt-8 px-6 md:px-10 animate-fade-in max-w-[1600px] mx-auto">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 border-b border-border pb-6">
         <div>
@@ -211,12 +232,30 @@ export default function ActivityPage({
       {activeTab === "chats" && (
         <div className="space-y-8 animate-slide-up">
           {/* Time Range Filter */}
-          <div className="flex justify-end">
+          <div className="flex flex-col md:flex-row items-center justify-end gap-4">
+            {timeRange === "custom" && (
+                <div className="flex items-center gap-2 bg-card border border-border px-4 py-1.5 rounded-xl shadow-sm animate-fade-in">
+                   <input 
+                    type="date" 
+                    value={customRange.start}
+                    onChange={(e) => setCustomRange({...customRange, start: e.target.value})}
+                    className="bg-transparent border-none text-xs text-foreground focus:ring-0" 
+                   />
+                   <span className="text-muted-foreground">→</span>
+                   <input 
+                    type="date" 
+                    value={customRange.end}
+                    onChange={(e) => setCustomRange({...customRange, end: e.target.value})}
+                    className="bg-transparent border-none text-xs text-foreground focus:ring-0" 
+                   />
+                </div>
+            )}
             <div className="inline-flex bg-card border border-border rounded-lg p-1 shadow-sm">
-              {(["today", "week", "month"] as const).map((range) => (
+              {(["today", "week", "month", "custom"] as const).map((range) => (
                 <button
+                  type="button"
                   key={range}
-                  onClick={() => setTimeRange(range)}
+                  onClick={(e) => { e.preventDefault(); setTimeRange(range); }}
                   className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     timeRange === range
                       ? "bg-primary text-primary-foreground"
@@ -227,7 +266,9 @@ export default function ActivityPage({
                     ? "24h"
                     : range === "week"
                       ? "7 Days"
-                      : "30 Days"}
+                      : range === "month"
+                        ? "30 Days"
+                        : "Custom"}
                 </button>
               ))}
             </div>
@@ -282,7 +323,7 @@ export default function ActivityPage({
                     </h3>
                     {/* Add a simple legend/context if needed */}
                     <span className="text-xs text-muted-foreground">
-                      Messages per hour (
+                      {timeRange === "today" ? "Messages per hour" : "Messages per day"} (
                       {timeRange === "today" ? "24h" : timeRange})
                     </span>
                   </div>
@@ -290,30 +331,10 @@ export default function ActivityPage({
                   {analytics.hourlyChats?.length > 0 ? (
                     <div className="h-[350px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart
-                          data={analytics.hourlyChats}
+                        <BarChart
+                          data={timeRange === "today" ? analytics.hourlyChats : analytics.dailyChats}
                           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                         >
-                          <defs>
-                            <linearGradient
-                              id="colorChats"
-                              x1="0"
-                              y1="0"
-                              x2="0"
-                              y2="1"
-                            >
-                              <stop
-                                offset="5%"
-                                stopColor="hsl(var(--primary))"
-                                stopOpacity={0.3}
-                              />
-                              <stop
-                                offset="95%"
-                                stopColor="hsl(var(--primary))"
-                                stopOpacity={0}
-                              />
-                            </linearGradient>
-                          </defs>
                           <CartesianGrid
                             strokeDasharray="3 3"
                             stroke="hsl(var(--border))"
@@ -321,22 +342,21 @@ export default function ActivityPage({
                             opacity={0.4}
                           />
                           <XAxis
-                            dataKey="hour"
+                            dataKey={timeRange === "today" ? "hour" : "date"}
                             stroke="hsl(var(--muted-foreground))"
                             fontSize={12}
                             tickLine={false}
                             axisLine={false}
                             dy={10}
-                            // ✅ IMPROVEMENT: Format the tick labels to be readable (e.g., 14:00 -> 2 PM)
                             tickFormatter={(value) => {
+                              if (timeRange !== "today") return value;
                               const hour = parseInt(value.split(":")[0]);
                               if (isNaN(hour)) return value;
                               const ampm = hour >= 12 ? "PM" : "AM";
                               const h = hour % 12 || 12;
                               return `${h} ${ampm}`;
                             }}
-                            // ✅ Reduce tick count to avoid clutter (show every 4th tick)
-                            interval={3}
+                            interval={timeRange === "today" ? 3 : "preserveStartEnd"}
                           />
                           <YAxis
                             stroke="hsl(var(--muted-foreground))"
@@ -344,46 +364,41 @@ export default function ActivityPage({
                             tickLine={false}
                             axisLine={false}
                             dx={-10}
-                            // ✅ Only show integer counts (no 1.5 chats)
                             allowDecimals={false}
                           />
                           <Tooltip
                             contentStyle={{
-                              backgroundColor: "hsl(var(--card))",
-                              borderColor: "hsl(var(--border))",
-                              borderRadius: "12px",
-                              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-                              color: "hsl(var(--foreground))",
-                              padding: "12px",
+                                backgroundColor: "hsl(var(--card))",
+                                borderColor: "hsl(var(--border))",
+                                borderRadius: "12px",
+                                padding: "12px",
+                                color: "hsl(var(--foreground))",
                             }}
-                            cursor={{
-                              stroke: "hsl(var(--primary))",
-                              strokeWidth: 2,
-                              strokeDasharray: "5 5",
-                            }}
-                            // ✅ Custom Tooltip Content
-                            formatter={(value: number) => [
-                              `${value} msg`,
-                              "Volume",
-                            ]}
+                            cursor={{ fill: "hsl(var(--primary))", opacity: 0.1 }}
+                            formatter={(value: number) => [`${value} msg`, "Volume"]}
                             labelFormatter={(label) => {
-                              // Make tooltip header nice too
-                              const hour = parseInt(label.split(":")[0]);
-                              if (isNaN(hour)) return label;
-                              const ampm = hour >= 12 ? "PM" : "AM";
-                              const h = hour % 12 || 12;
-                              return `${h}:00 ${ampm}`;
+                                if (timeRange !== "today") return label;
+                                const hour = parseInt(label.split(":")[0]);
+                                if (isNaN(hour)) return label;
+                                const ampm = hour >= 12 ? "PM" : "AM";
+                                const h = hour % 12 || 12;
+                                return `${h}:00 ${ampm}`;
                             }}
                           />
-                          <Area
-                            type="monotone" // smooth curve
+                          <Bar
                             dataKey="count"
-                            stroke="hsl(var(--primary))"
-                            strokeWidth={3}
-                            fill="url(#colorChats)"
+                            radius={[6, 6, 0, 0]}
                             animationDuration={1500}
-                          />
-                        </AreaChart>
+                          >
+                            {(timeRange === "today" ? analytics.hourlyChats : analytics.dailyChats).map((entry, index) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={entry.count > 0 ? "hsl(var(--primary))" : "transparent"} 
+                                fillOpacity={0.8}
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
                       </ResponsiveContainer>
                     </div>
                   ) : (
@@ -394,40 +409,56 @@ export default function ActivityPage({
                   )}
                 </div>
 
-                {/* Country List */}
-                <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-                  <h3 className="text-lg font-bold text-foreground mb-6">
-                    Top Locations
-                  </h3>
-                  {analytics.chatsByCountry?.length > 0 ? (
-                    <div className="space-y-5">
-                      {analytics.chatsByCountry.slice(0, 8).map((item) => (
-                        <div key={item.country} className="group">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-foreground flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-muted-foreground"></span>{" "}
-                              {item.country}
-                            </span>
-                            <span className="text-sm font-bold text-muted-foreground group-hover:text-primary transition-colors">
-                              {item.count}
-                            </span>
-                          </div>
-                          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                            <div
-                              className="bg-gradient-to-r from-primary to-fuchsia-500 h-2 rounded-full transition-all duration-1000 ease-out"
-                              style={{
-                                width: `${analytics.totalChats > 0 ? (item.count / analytics.totalChats) * 100 : 0}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      ))}
+                {/* Global Presence — Light Horizon Mode with Gradient Corners */}
+                <div className="relative bg-card border border-border rounded-xl p-6 shadow-sm overflow-hidden h-fit group transition-all duration-300">
+                  {/* High-Fidelity Corner Gradients */}
+                  <div className="absolute top-0 left-0 w-32 h-32 bg-radial from-[#EAB564]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                  <div className="absolute bottom-0 right-0 w-32 h-32 bg-radial from-[#EAB564]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+
+                  {/* Card Header with Live/Static Toggle */}
+                  <div className="flex items-start justify-between mb-4 relative z-10">
+                    <div>
+                      <h3 className="text-lg font-bold text-foreground">Global Presence</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {isGlobeLive
+                          ? liveData?.activeCount
+                            ? `${liveData.activeCount} user${liveData.activeCount !== 1 ? "s" : ""} active now`
+                            : "No active sessions right now"
+                          : "Showing sessions for selected period"}
+                      </p>
                     </div>
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-50">
-                      <p>No location data</p>
-                    </div>
-                  )}
+                    <button
+                      type="button"
+                      onClick={() => setIsGlobeLive((v) => !v)}
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all shrink-0 ${isGlobeLive
+                        ? "bg-primary/20 text-primary border-primary/30"
+                        : "bg-muted text-muted-foreground border-border"
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full inline-block ${isGlobeLive ? "bg-primary animate-ping" : "bg-muted-foreground"}`} />
+                      {isGlobeLive ? "Live" : "Static"}
+                    </button>
+                  </div>
+
+                  {/* Globe — Using Light-Ink mode for Parchment blending */}
+                  <WorldGlobe markers={globeMarkers} isLive={isGlobeLive} lightMode={true} />
+
+                  {/* Country List — scrollable, fixed height */}
+                  <div className="mt-4 space-y-2 max-h-[120px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+                     {(isGlobeLive ? (liveData?.chatsByCountry ?? []) : (analytics?.chatsByCountry ?? [])).map(item => (
+                         <div key={item.country} className="flex items-center justify-between text-xs animate-in fade-in duration-300">
+                             <span className="text-muted-foreground font-medium flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary" /> {item.country}
+                             </span>
+                             <span className="text-foreground font-bold">{item.count} {isGlobeLive ? "active" : "sessions"}</span>
+                         </div>
+                     ))}
+                     {isGlobeLive && (!liveData?.chatsByCountry || liveData.chatsByCountry.length === 0) && (
+                         <div className="text-[10px] text-muted-foreground italic text-center py-4">
+                            Waiting for active sessions...
+                         </div>
+                     )}
+                  </div>
                 </div>
               </div>
             </>

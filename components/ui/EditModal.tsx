@@ -48,7 +48,14 @@ function EditModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in overflow-hidden">
+      {/* High-Fidelity Radial Background Overlay */}
+      <div 
+        className="absolute inset-0 backdrop-blur-[24px] pointer-events-none"
+        style={{
+          background: "radial-gradient(circle at center, rgba(247, 244, 239, 0.1) 0%, rgba(26, 23, 20, 0.4) 100%)",
+        }}
+      />
       <div className="bg-card border border-border rounded-xl w-full max-w-lg p-6 relative shadow-2xl">
         <button
           onClick={onClose}

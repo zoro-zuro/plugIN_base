@@ -46,7 +46,8 @@ async function loadDocument(
       }));
     }
     case "txt":
-    case "md": {
+    case "md":
+    case "url": {
       return [
         {
           text: buffer.toString("utf-8"),

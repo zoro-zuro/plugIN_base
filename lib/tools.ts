@@ -46,81 +46,50 @@ Use this tool when the user asks about specific data, files, policies, or inform
     try {
       const vectorStore = await getPineconeVectorStore(this.namespace);
 
-      // ✅ Use similarity search (faster than MMR, good enough for most cases)
       const scoredResults = await vectorStore.similaritySearchWithScore(
         searchQuery,
-        3, // Get 3 results with scores
+        10, // Retrieve more for potential reranking
       );
 
-      // ✅ Early exit on no results
-      if (!scoredResults.length) {
-        console.log(`🔧 No results found`);
-        this.lastDocs = [];
-        const result = "No relevant information found in the knowledge base.";
-        searchCache.set(cacheKey, { result, timestamp: Date.now() });
-        return result;
-      }
+      if (scoredResults.length === 0) return "No relevant information found.";
 
-      // ✅ Filter by relevance score
-      const relevantResults = scoredResults.filter(
-        ([_, score]) => score >= MIN_RELEVANCE_SCORE,
-      );
-
-      if (!relevantResults.length) {
-        console.log(
-          `🔧 Top score ${scoredResults[0][1].toFixed(3)} below threshold ${MIN_RELEVANCE_SCORE}`,
-        );
-        this.lastDocs = [];
-        const result =
-          "No sufficiently relevant information found in the knowledge base for this query.";
-        searchCache.set(cacheKey, { result, timestamp: Date.now() });
-        return result;
-      }
-
-      const docs = relevantResults.map(([doc, score]) => {
-        console.log(
-          `   📄 Score: ${score.toFixed(3)} - ${doc.metadata?.fileName || "Unknown"}`,
-        );
-        return doc;
+      // 1. Group unique files and collect their context
+      const uniqueFiles = new Set<string>();
+      scoredResults.forEach(([doc]) => {
+        if (doc.metadata?.fileName) uniqueFiles.add(doc.metadata.fileName);
       });
 
-      this.lastDocs = docs;
+      // 2. Fetch "Headers" (chunk 0) for all unique files
+      // This ensures names/titles/metadata at the top are always seen
+      const headerDocs = await vectorStore.similaritySearch("", uniqueFiles.size, {
+        fileName: { $in: Array.from(uniqueFiles) },
+        chunkIndex: 0
+      });
 
-      console.log(`🔧 Retrieved ${docs.length} documents`);
+      let context = "KNOWLEDGE BASE CONTEXT:\n";
+      
+      // Inject Headers First (Highest Priority for Identity/Context)
+      headerDocs.forEach(h => {
+        context += `\n<FILE_HEADER: ${h.metadata.fileName}>\n${h.pageContent}\n</FILE_HEADER>\n`;
+      });
 
-      // ✅ Build context efficiently (pre-allocate array size)
-      const contextParts: string[] = [];
-      let totalLength = 0;
-
-      for (let idx = 0; idx < docs.length; idx++) {
-        const doc = docs[idx];
-        const source = doc.metadata?.fileName || `Source ${idx + 1}`;
-        const part = `[${source}]\n${doc.pageContent}`;
-
-        // ✅ Stop early if we hit max length
-        if (totalLength + part.length > MAX_CONTEXT_CHARS) {
-          contextParts.push(part.slice(0, MAX_CONTEXT_CHARS - totalLength));
-          contextParts.push("\n\n[...truncated]");
-          break;
-        }
-
-        contextParts.push(part);
+      // Inject Scored Chunks
+      let totalLength = context.length;
+      for (const [doc, score] of scoredResults.slice(0, 5)) {
+        const source = doc.metadata?.fileName || "Unknown";
+        const part = `\n<DOCUMENT_SNIPPET: ${source} (Relevance: ${Math.round(score * 100)}%)>\n${doc.pageContent}\n</DOCUMENT_SNIPPET>\n`;
+        
+        if (totalLength + part.length > 8000) break;
+        context += part;
         totalLength += part.length;
-
-        if (idx < docs.length - 1) {
-          contextParts.push("\n\n---\n\n");
-          totalLength += 9;
-        }
       }
 
-      const context = contextParts.join("");
-
-      console.log(`🔧 Returning ${context.length} chars`);
-
+      const finalContext = `${context}\n\nSearch complete. Use the headers above to identify specific entities if not found in snippets.`;
+      
       // ✅ Cache the result
-      searchCache.set(cacheKey, { result: context, timestamp: Date.now() });
+      searchCache.set(cacheKey, { result: finalContext, timestamp: Date.now() });
 
-      return context;
+      return finalContext;
     } catch (error) {
       console.error("🔧 ERROR:", error);
       this.lastDocs = [];

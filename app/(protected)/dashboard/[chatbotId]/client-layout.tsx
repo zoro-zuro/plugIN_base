@@ -22,6 +22,7 @@ import { UserButton, useUser, SignOutButton } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useTheme } from "next-themes";
+import { Logo } from "@/components/ui/Logo";
 
 const sidebarItems = [
   { name: "Playground", icon: FiMessageSquare, path: "playground" },
@@ -53,6 +54,11 @@ export default function DashboardClientLayout({
     user?.id ? { userId: user.id } : "skip",
   );
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -83,9 +89,10 @@ export default function DashboardClientLayout({
       {/* ✅ NEW: Sticky Mobile Header */}
       <div className="md:hidden fixed top-0 inset-x-0 h-16 bg-card border-b border-border flex items-center justify-between px-4 z-50">
         <div className="flex items-center gap-3 overflow-hidden">
-          <button onClick={() => router.push("/")} className="shrink-0">
-            <span className="text-xl font-bold tracking-tight text-primary">
-              PlugIN
+          <button onClick={() => router.push("/")} className="shrink-0 flex items-center gap-2">
+            <Logo className="h-6 w-6" />
+            <span style={{ fontFamily: 'Georgia, serif' }} className="text-xl font-black tracking-tight text-[#1A1714]">
+              PluginBase
             </span>
           </button>
           <div className="h-6 w-px bg-border"></div>
@@ -131,8 +138,9 @@ export default function DashboardClientLayout({
             onClick={() => router.push("/")}
             className="flex items-center gap-2 group w-full outline-none"
           >
-            <span className="text-xl font-bold tracking-tight gradient-text group-hover:text-primary transition-colors">
-              PlugIN
+            <Logo className="h-8 w-8 group-hover:scale-110 transition-transform duration-500" />
+            <span style={{ fontFamily: 'Georgia, serif' }} className="text-xl font-black tracking-tight text-[#1A1714]">
+              PluginBase
             </span>
           </button>
 
@@ -162,10 +170,10 @@ export default function DashboardClientLayout({
           <div className="relative mb-6" ref={dropdownRef}>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-border bg-card hover:bg-accent/50 transition-all duration-200 group ${isDropdownOpen ? "ring-2 ring-primary/20 border-primary" : ""}`}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-border bg-card hover:bg-accent/50 transition-all duration-200 group ${isDropdownOpen ? "ring-2 ring-[#EAB564]/20 border-[#EAB564]" : ""}`}
             >
               <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-violet-600 flex items-center justify-center text-white font-bold shadow-md shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-[#1A1714] flex items-center justify-center text-[#EAB564] font-black shadow-md shrink-0">
                   {chatbot?.name?.charAt(0).toUpperCase() || "B"}
                 </div>
                 <div className="text-left truncate">
@@ -261,25 +269,31 @@ export default function DashboardClientLayout({
           {/* User Profile */}
           <div className="flex items-center justify-between gap-2 pl-1">
             <div className="flex items-center gap-3 overflow-hidden">
-              <div className="transition-transform hover:scale-105 cursor-pointer">
-                <UserButton
-                  afterSignOutUrl="/"
-                  appearance={{
-                    elements: { avatarBox: "w-8 h-8" },
-                  }}
-                />
-              </div>
-              {isLoaded && user ? (
-                <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-bold text-foreground truncate leading-tight">
-                    {user.fullName?.split(" ")[0] || "User"}
-                  </span>
-                  {/* <span className="text-[10px] text-muted-foreground truncate leading-tight">
-                    Free Plan
-                  </span> */}
-                </div>
+              {mounted ? (
+                <>
+                  <div className="transition-transform hover:scale-105 cursor-pointer">
+                    <UserButton
+                      afterSignOutUrl="/"
+                      appearance={{
+                        elements: { avatarBox: "w-8 h-8" },
+                      }}
+                    />
+                  </div>
+                  {isLoaded && user ? (
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-bold text-foreground truncate leading-tight">
+                        {user.fullName?.split(" ")[0] || "User"}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="w-20 h-8 bg-muted rounded animate-pulse" />
+                  )}
+                </>
               ) : (
-                <div className="w-20 h-8 bg-muted rounded animate-pulse" />
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
+                  <div className="w-20 h-4 bg-muted rounded animate-pulse" />
+                </div>
               )}
             </div>
 
@@ -301,7 +315,7 @@ export default function DashboardClientLayout({
         <div className="h-16 md:hidden" />
 
         <div className="sticky top-0 h-6 bg-gradient-to-b from-background to-transparent z-10 pointer-events-none hidden md:block" />
-        <div className="px-2 md:px-8 max-w-7xl md:mx-auto">{children}</div>
+        <div className="w-full">{children}</div>
       </main>
     </div>
   );

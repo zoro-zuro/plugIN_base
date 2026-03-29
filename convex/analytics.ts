@@ -113,35 +113,91 @@ export const getChatAnalytics = query({
     // Calculate messages with thumbs down
     const thumbsDown = messages.filter((m) => m.feedback === "negative").length;
 
-    // Group chats by country
+    // Group chats by country & generate globe markers
     const chatsByCountry: Record<string, number> = {};
+    
+    // Static mapping for common countries to enable the 3D globe without external geocoders
+    const COUNTRY_COORDS: Record<string, [number, number]> = {
+      "India": [20.5937, 78.9629],
+      "United States": [37.0902, -95.7129],
+      "United Kingdom": [55.3781, -3.436],
+      "Germany": [51.1657, 10.4515],
+      "France": [46.2276, 2.2137],
+      "Canada": [56.1304, -106.3468],
+      "Australia": [-25.2744, 133.7751],
+      "Brazil": [-14.235, -51.9253],
+      "Japan": [36.2048, 138.2529],
+      "China": [35.8617, 104.1954],
+      "Russia": [61.524, 105.3188],
+      "Spain": [40.4637, -3.7492],
+      "Italy": [41.8719, 12.5674],
+      "Singapore": [1.3521, 103.8198],
+      "United Arab Emirates": [23.4241, 53.8478],
+    };
+
     sessionCount.forEach((session) => {
       const country = session.userCountry || "Unknown";
       chatsByCountry[country] = (chatsByCountry[country] || 0) + 1;
     });
 
-    // Hourly distribution (for wave chart)
+    // Create markers for COBE globe
+    const locationMarkers = Object.entries(chatsByCountry)
+      .filter(([country]) => COUNTRY_COORDS[country])
+      .map(([country, count]) => ({
+        location: COUNTRY_COORDS[country],
+        size: Math.min(0.1, 0.02 + (count / totalChats) * 0.08),
+        label: country, // We can also aggregate city names here if needed
+      }));
+
+    // Hourly distribution
     const hourlyData: Record<string, number> = {};
-    const formatter = new Intl.DateTimeFormat("en-US", {
+    const hourFormatter = new Intl.DateTimeFormat("en-US", {
       hour: "numeric",
-      hour12: false, // returns "13", "14", etc.
-      timeZone: args.timezone || "UTC", // Use passed timezone or fallback
+      hour12: false,
+      timeZone: args.timezone || "UTC",
     });
+
     messages.forEach((msg) => {
-      // This converts the UTC timestamp to "13" (if it's 1 PM in India)
-      const hourStr = formatter.format(new Date(msg.timestamp));
+      const hourStr = hourFormatter.format(new Date(msg.timestamp));
       let hour = parseInt(hourStr);
-
-      // Handle edge case where formatter might return "24"
       if (hour === 24) hour = 0;
-
       const key = `${hour}:00`;
       hourlyData[key] = (hourlyData[key] || 0) + 1;
     });
+
     const hourlyChats = Array.from({ length: 24 }, (_, i) => ({
       hour: `${i}:00`,
       count: hourlyData[`${i}:00`] || 0,
     }));
+
+    // Daily distribution
+    const dailyData: Record<string, number> = {};
+    messages.forEach((msg) => {
+      const date = new Date(msg.timestamp).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        timeZone: args.timezone || "UTC",
+      });
+      dailyData[date] = (dailyData[date] || 0) + 1;
+    });
+
+    // FILL GAPS
+    const dailyChats = [];
+    let current = new Date(args.startDate);
+    const end = new Date(args.endDate);
+    while (current <= end) {
+      const dateStr = current.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        timeZone: args.timezone || "UTC",
+      });
+      dailyChats.push({
+        date: dateStr,
+        count: dailyData[dateStr] || 0,
+      });
+      current.setDate(current.getDate() + 1);
+    }
+
     return {
       totalChats,
       totalMessages,
@@ -152,7 +208,9 @@ export const getChatAnalytics = query({
       chatsByCountry: Object.entries(chatsByCountry)
         .map(([country, count]) => ({ country, count }))
         .sort((a, b) => b.count - a.count),
+      locationMarkers,
       hourlyChats,
+      dailyChats,
     };
   },
 });
@@ -215,5 +273,81 @@ export const getTotalChats = query({
       return s.messageCount > 0;
     });
     return sessionCount.length;
+  },
+});
+
+// ── Real-time active sessions (messages in the last 5 minutes) ──────────────
+const COUNTRY_COORDS_LIVE: Record<string, [number, number]> = {
+  "India": [20.5937, 78.9629],
+  "United States": [37.0902, -95.7129],
+  "United Kingdom": [55.3781, -3.436],
+  "Germany": [51.1657, 10.4515],
+  "France": [46.2276, 2.2137],
+  "Canada": [56.1304, -106.3468],
+  "Australia": [-25.2744, 133.7751],
+  "Brazil": [-14.235, -51.9253],
+  "Japan": [36.2048, 138.2529],
+  "China": [35.8617, 104.1954],
+  "Russia": [61.524, 105.3188],
+  "Spain": [40.4637, -3.7492],
+  "Italy": [41.8719, 12.5674],
+  "Singapore": [1.3521, 103.8198],
+  "United Arab Emirates": [23.4241, 53.8478],
+};
+
+export const getActiveSessionMarkers = query({
+  args: { chatbotId: v.string() },
+  handler: async (ctx, args) => {
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+
+    // Find messages sent in the last 5 minutes
+    const recentMessages = await ctx.db
+      .query("chat_messages")
+      .withIndex("by_chatbot_time", (q) => q.eq("chatbotId", args.chatbotId))
+      .filter((q) => q.gte(q.field("timestamp"), fiveMinutesAgo))
+      .collect();
+
+    // Get unique active session IDs
+    const activeSessionIds = [...new Set(recentMessages.map((m) => m.sessionId))];
+
+    if (activeSessionIds.length === 0) return { markers: [], activeCount: 0 };
+
+    // Fetch session details for those sessions
+    const allSessions = await ctx.db
+      .query("chat_sessions")
+      .withIndex("by_chatbot", (q) => q.eq("chatbotId", args.chatbotId))
+      .collect();
+
+    const activeSessions = allSessions.filter((s) =>
+      activeSessionIds.includes(s.sessionId)
+    );
+
+    // Group by country
+    const byCountry: Record<string, number> = {};
+    activeSessions.forEach((s) => {
+      const country = s.userCountry || "Unknown";
+      byCountry[country] = (byCountry[country] || 0) + 1;
+    });
+
+    const total = activeSessions.length;
+
+    const markers = Object.entries(byCountry)
+      .filter(([c]) => COUNTRY_COORDS_LIVE[c])
+      .map(([country, count]) => ({
+        location: COUNTRY_COORDS_LIVE[country],
+        size: Math.min(0.12, 0.04 + (count / total) * 0.08),
+        label: `${country} · ${count} active`,
+      }));
+
+    const chatsByCountryArray = Object.entries(byCountry).map(([country, count]) => ({
+      country,
+      count
+    }));
+
+    return { 
+      markers, 
+      activeCount: total,
+      chatsByCountry: chatsByCountryArray
+    };
   },
 });

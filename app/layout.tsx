@@ -14,10 +14,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PlugIN Base",
+  title: "PluginBase | Custom AI RAG Infrastructure",
   description:
-    "Custom AI Chatbots made easy with PlugIN Base. Build, deploy, and manage chatbots tailored to your needs.Just upload your documents, create a chatbot, and plug it in anywhere.",
-  icons: { icon: "/logo.png" },
+    "High-fidelity AI Chatbots made easy. Build, deploy, and manage conversational engines tailored to your data—from PDFs to live sites. No coding required.",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({

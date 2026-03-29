@@ -1,38 +1,37 @@
 type CustomOverall = {
-  // exact_match: number;
   semantic_similarity: number;
-  // keyword_precision: number;
   keyword_recall: number;
   context_precision: number;
   context_recall: number;
+  faithfulness: number;
   latency_ms: number;
 };
 
 type CustomRow = {
   question: string;
-  exact_match: number;
   semantic_similarity: number;
-  keyword_precision: number;
   keyword_recall: number;
   context_precision: number;
   context_recall: number;
+  faithfulness: number;
   latency_ms: number;
 };
 
 function calculateOverallScore(overall: CustomOverall): number {
   const score =
-    overall.semantic_similarity * 60 +
-    overall.keyword_recall * 20 + // Adjusted weight
+    overall.semantic_similarity * 30 +
+    overall.faithfulness * 30 +
+    overall.keyword_recall * 20 +
     ((overall.context_precision + overall.context_recall) / 2) * 20;
   return Math.round(score);
 }
 
 function calculateTestScore(row: CustomRow): number {
   const score =
-    // row.exact_match * 25 +  <-- REMOVED
-    row.semantic_similarity * 50 + // Increased weight
+    row.semantic_similarity * 30 +
+    row.faithfulness * 30 +
     row.keyword_recall * 20 +
-    ((row.context_precision + row.context_recall) / 2) * 30;
+    ((row.context_precision + row.context_recall) / 2) * 20;
   return Math.round(score);
 }
 function getPerformanceLabel(score: number): string {

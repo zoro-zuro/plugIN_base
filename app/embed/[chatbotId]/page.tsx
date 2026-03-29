@@ -8,6 +8,8 @@ import Link from "next/link";
 import { Zap } from "lucide-react";
 import { flushSync } from "react-dom";
 import { StepProgress } from "@/components/ui/StepProgress";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type Message = {
   id: string;
@@ -51,10 +53,54 @@ export default function EmbedChatWidget({
   const streamRafRef = useRef<number | null>(null);
   const streamIdRef = useRef<string | null>(null);
 
+  // 1. Domain Guard System: Zero-Flash Architecture
+  const [authStatus, setAuthStatus] = useState<"pending" | "authorized" | "unauthorized">("pending");
+
+  useEffect(() => {
+    if (!chatbot) return;
+
+    if (!chatbot.isDomainWhitelistingEnabled) {
+      setAuthStatus("authorized");
+      return;
+    }
+
+    // Enforcement Logic
+    try {
+      const parentUrl = document.referrer;
+      if (!parentUrl) {
+        setAuthStatus("unauthorized");
+        return;
+      }
+
+      const parentOrigin = new URL(parentUrl).origin;
+      const registry = chatbot.allowedDomains || [];
+
+      if (registry.length === 0) {
+        setAuthStatus("unauthorized");
+        return;
+      }
+
+      const isWhitelisted = registry.some(domain => {
+        const d = domain.trim().replace(/\/$/, ""); 
+        const normalizedDomain = d.startsWith("http") ? d : `https://${d}`;
+        try {
+          const allowedOrigin = new URL(normalizedDomain).origin;
+          return allowedOrigin === parentOrigin;
+        } catch {
+          return domain === parentOrigin || parentOrigin.includes(domain);
+        }
+      });
+
+      setAuthStatus(isWhitelisted ? "authorized" : "unauthorized");
+    } catch (e) {
+      setAuthStatus("unauthorized");
+    }
+  }, [chatbot]);
+
   // 1. Initialize & Warmup (Optimized: Fire-Once Logic)
   useEffect(() => {
-    // Only proceed if we have data AND haven't run yet
-    if (chatbot && !welcomeInitialized.current) {
+    // Only proceed if authorized
+    if (chatbot && !welcomeInitialized.current && authStatus === "authorized") {
       welcomeInitialized.current = true; // Mark as done immediately
 
       // Set Welcome Message
@@ -63,12 +109,11 @@ export default function EmbedChatWidget({
           id: "welcome",
           role: "assistant",
           content: chatbot.welcomeMessage || "Hi! How can I help you today?",
-          feedback: null, // ✅ Explicit null to prevent feedback bug
+          feedback: null, 
         },
       ]);
 
-      // ✅ FIRE WARMUP (Once per session)
-      // This sends the full chatbot object so the server can warm the correct namespace
+      // ✅ FIRE WARMUP
       console.log("🔥 Firing Warmup Request");
       fetch("/api/stream", {
         method: "POST",
@@ -81,7 +126,7 @@ export default function EmbedChatWidget({
         .then(() => console.log("Warmup signal sent"))
         .catch((err) => console.log("Warmup failed silently", err));
     }
-  }, [chatbot]);
+  }, [chatbot, authStatus]);
 
   // 2. Geolocation & Session Tracking
   useEffect(() => {
@@ -162,7 +207,7 @@ export default function EmbedChatWidget({
   ) => {
     const message = messages[messageIndex];
 
-    if (!message.messageId || message.feedback !== null) return;
+    if (!message.messageId || message.feedback) return;
 
     try {
       setMessages((prev) =>
@@ -367,28 +412,51 @@ export default function EmbedChatWidget({
     }
   };
 
-  if (!chatbot) {
+  if (!chatbot || authStatus === "pending") {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
+      <div className="flex h-screen items-center justify-center bg-[#F7F4EF]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <div className="w-10 h-10 rounded-xl bg-[#1A1714]/10 flex items-center justify-center animate-pulse">
+            <div className="w-5 h-5 border-2 border-[#1A1714]/30 border-t-[#EAB564] rounded-full animate-spin" />
           </div>
         </div>
       </div>
     );
   }
 
+  if (authStatus === "unauthorized") {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#F7F4EF] p-8 text-center">
+        <div className="max-w-xs space-y-6 animate-slide-up">
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center text-destructive mb-2">
+             <Zap size={32} className="fill-current" />
+          </div>
+          <div className="space-y-2">
+            <h2 style={{ fontFamily: 'Georgia, serif' }} className="text-xl font-bold text-[#1A1714]">Unauthorized Access</h2>
+            <p className="text-[10px] text-destructive leading-relaxed uppercase tracking-widest font-black bg-destructive/5 py-1 px-3 rounded-full inline-block">Security Protocol: Active</p>
+          </div>
+          <div className="h-px bg-[#E2D9CC] w-12 mx-auto" />
+          <p className="text-sm text-[#8C7B68] font-medium leading-relaxed">
+            This intelligence agent is locked on this domain. Please list <span className="text-[#1A1714] font-bold">this domain</span> in your <span className="text-[#EAB564] font-bold italic">Settings</span> for access.
+          </p>
+          <Link href="/dashboard" target="_blank" className="inline-block mt-4 text-[10px] font-black uppercase tracking-widest text-[#1A1714] hover:text-[#EAB564] transition-colors bg-[#EAB564] px-6 py-3 rounded-xl shadow-lg shadow-[#EAB564]/20 font-bold">
+             Go to Dashboard Settings →
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground">
+    <div className="flex flex-col h-screen bg-[#F7F4EF] text-[#1A1714]">
       {/* Header */}
       <div className="border-b border-border bg-card/50 backdrop-blur-sm px-4 py-3">
         <div className="flex items-center gap-3 max-w-3xl mx-auto">
           <div className="relative">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-fuchsia-500 flex items-center justify-center shadow-sm">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#EAB564] to-[#1A1714] flex items-center justify-center shadow-sm">
               <Zap className="w-4 h-4 text-white fill-white" />
             </div>
-            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-background rounded-full" />
+            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#F7F4EF] rounded-full" />
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-sm text-foreground truncate">
@@ -417,7 +485,22 @@ export default function EmbedChatWidget({
                       : "bg-card text-card-foreground border border-border rounded-2xl rounded-bl-sm"
                   }`}
                 >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                  <div className="markdown-content prose prose-sm max-w-none break-words dark:prose-invert">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({children}) => <p className="mb-2 last:mb-0">{children}</p>,
+                        ul: ({children}) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
+                        ol: ({children}) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
+                        li: ({children}) => <li className="mb-1">{children}</li>,
+                        strong: ({children}) => <strong className="font-bold text-foreground">{children}</strong>,
+                        code: ({children}) => <code className="bg-muted px-1 rounded text-xs font-mono">{children}</code>
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
+                  
                   {/* Cursor for streaming */}
                   {msg.isStreaming && (
                     <span className="inline-block w-1.5 h-3.5 ml-1 bg-current opacity-70 animate-pulse align-middle" />
@@ -513,11 +596,11 @@ export default function EmbedChatWidget({
             <Link
               href="/"
               target="_blank"
-              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex items-center gap-1.5 text-[11px] text-[#A6998A] hover:text-[#1A1714] transition-colors"
             >
-              <Zap size={11} />
+              <Zap size={11} className="fill-[#EAB564] text-[#EAB564]" />
               Powered by{" "}
-              <span className="gradient-text font-semibold">PlugIn</span>
+              <span style={{ fontFamily: 'Georgia, serif' }} className="font-bold text-[#1A1714]">PluginBase</span>
             </Link>
           </div>
         </div>

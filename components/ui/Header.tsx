@@ -15,19 +15,14 @@ import {
   MobileNavToggle,
   MobileNavMenu,
 } from "@/components/ui/resizable-navbar";
+import { Logo } from "./Logo";
 
 export function Header() {
   const { isSignedIn } = useUser();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { theme, setTheme } = useTheme(); // ✅ Use next-themes
   const pathname = usePathname();
   const router = useRouter();
   const [isAtTop, setIsAtTop] = useState(true);
-
-  // ✅ Toggle function
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -61,43 +56,47 @@ export function Header() {
 
   return (
     <div
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isAtTop ? "glass-morphism shadow-sm" : "bg-transparent"
-      }`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500`}
     >
       <Navbar>
         <NavBody>
           <button
             onClick={() => router.push("/")}
-            className="flex items-center gap-2 group outline-none"
+            className="flex items-center gap-3 group outline-none translate-x-3"
           >
-            <span className="font-bold text-xl tracking-tight text-foreground group-hover:text-primary transition-colors">
-              PlugIN
+            <Logo className="h-10 w-10 transition-transform duration-500 group-hover:scale-110 drop-shadow-sm" />
+            <span style={{ fontFamily: 'Georgia, serif' }} className="font-black text-2xl tracking-tight text-[#1A1714]">
+              PluginBase
             </span>
           </button>
 
           <div className="flex-1 flex justify-center">
-            <NavItems items={navItems} />
+            {/* NavItems custom styling */}
+            <div className="hidden md:flex items-center gap-10">
+              {navItems.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.link}
+                  className="text-xs font-bold uppercase tracking-[0.2em] text-[#8C7B68] hover:text-[#EAB564] transition-colors"
+                >
+                  {item.name}
+                </Link>
+              ))}
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              onClick={toggleTheme}
-              className="p-2.5 rounded-full hover:bg-accent text-foreground transition-colors"
-              suppressHydrationWarning
-            >
-              {theme === "dark" ? <FiSun size={18} /> : <FiMoon size={18} />}
-            </Button>
+          <div className="flex items-center gap-6">
 
             {!isSignedIn ? (
               <SignInButton mode="modal">
-                <button className="rounded-full bg-primary px-5 py-2 text-sm font-bold text-white hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-primary/25">
-                  Sign In
+                <button className="px-6 py-2.5 rounded-xl bg-[#1A1714] text-[#EAB564] text-sm font-black hover:bg-[#2E2820] transition-all shadow-xl shadow-[#1A1714]/10 active:scale-95">
+                  Access Platform
                 </button>
               </SignInButton>
             ) : (
-              <UserButton afterSignOutUrl="/" />
+              <div className="scale-110">
+                <UserButton afterSignOutUrl="/" />
+              </div>
             )}
           </div>
         </NavBody>
@@ -105,17 +104,11 @@ export function Header() {
         <MobileNav className="md:hidden">
           <MobileNavHeader>
             <Link href="/" className="flex items-center gap-2">
-              <span className="font-bold text-lg text-foreground">PlugIN</span>
+              <Logo className="h-6 w-6" />
+              <span style={{ fontFamily: 'Georgia, serif' }} className="font-black text-lg text-[#1A1714]">PluginBase</span>
             </Link>
 
             <div className="flex items-center gap-2">
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-md hover:bg-accent text-foreground transition-colors"
-                suppressHydrationWarning
-              >
-                {theme === "dark" ? <FiSun size={20} /> : <FiMoon size={20} />}
-              </button>
 
               <MobileNavToggle
                 isOpen={isMobileMenuOpen}

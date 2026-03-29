@@ -9,7 +9,7 @@ export default function MarketingLayout({
     <div className="flex flex-col min-h-screen">
       {/* ✅ Add Header HERE */}
       <Header />
-      <main className="flex-1 mx-1.5">{children}</main>
+      <main className="flex-1">{children}</main>
     </div>
   );
 }

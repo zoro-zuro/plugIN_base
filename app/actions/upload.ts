@@ -56,7 +56,11 @@ async function processVectorsInBackground(
     console.log(`✅ [Background] Vectors upserted for ${fileName}`);
   } catch (error) {
     console.error("❌ [Background] Vector processing failed:", error);
-    // Optional: Mark document as "failed" in Convex
+    // ✅ Mark as failed in Convex
+    await fetchMutation(api.documents.updateDocumentStatus, {
+      documentId,
+      status: "failed",
+    });
   }
 }
 

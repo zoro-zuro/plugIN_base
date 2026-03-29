@@ -40,11 +40,14 @@ export async function generateResponseStream(
   if (!query?.trim()) throw new Error("Query cannot be empty");
   if (!chatbot.namespace) throw new Error("Namespace not found");
 
-  const modelName = chatbot?.modelName || "llama-3.3-70b";
   const temperature = chatbot?.temperature ?? 0.5;
-  const maxTokens = chatbot?.maxTokens || 500;
+  const maxTokens = chatbot?.maxTokens || 1000;
 
-  const model = getCachedModel(modelName, temperature, maxTokens);
+  // Normalize model name (remove extra dashes from 'llama-3' vs 'llama3')
+  const rawModel = (chatbot?.modelName || "llama3.1-8b").toLowerCase();
+  const normalizedModel = rawModel.replace("llama-", "llama");
+
+  const model = getCachedModel(normalizedModel, temperature, maxTokens);
   const kbTool = new KnowledgeBaseTool(chatbot.namespace);
 
   // Validation helpers

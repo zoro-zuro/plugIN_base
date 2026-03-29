@@ -10,6 +10,10 @@ import {
   FiSettings as FiSettingsIcon,
   FiLoader,
   FiTrash2,
+  FiShield,
+  FiCheck,
+  FiX,
+  FiPlus,
 } from "react-icons/fi";
 import { useRouter } from "next/navigation";
 
@@ -31,12 +35,14 @@ export default function SettingsPage({
     description: "",
     systemPrompt: "",
     temperature: 0.5,
-    modelName: "llama-3.1-8b",
+    modelName: "llama3.1-8b",
     maxTokens: 1000,
     welcomeMessage: "Hi! How can I help you today?",
     errorMessage: "Sorry, something went wrong. Please try again.",
     responseLanguage: "English",
     timezone: "UTC",
+    allowedDomains: [] as string[],
+    isDomainWhitelistingEnabled: false,
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -50,7 +56,7 @@ export default function SettingsPage({
         description: chatbot.description || "",
         systemPrompt: chatbot.systemPrompt || "",
         temperature: chatbot.temperature ?? 0.5,
-        modelName: chatbot.modelName || "llama-3.1-8b",
+        modelName: chatbot.modelName || "llama3.1-8b",
         maxTokens: chatbot.maxTokens ?? 1000,
         welcomeMessage:
           chatbot.welcomeMessage || "Hi! How can I help you today?",
@@ -59,6 +65,8 @@ export default function SettingsPage({
           "Sorry, something went wrong. Please try again.",
         responseLanguage: chatbot.responseLanguage || "English",
         timezone: chatbot.timezone || "UTC",
+        allowedDomains: chatbot.allowedDomains || [],
+        isDomainWhitelistingEnabled: chatbot.isDomainWhitelistingEnabled || false,
       });
     }
   }, [chatbot]);
@@ -109,7 +117,7 @@ export default function SettingsPage({
       description: chatbot.description || "",
       systemPrompt: chatbot.systemPrompt || "",
       temperature: chatbot.temperature ?? 0.5,
-      modelName: chatbot.modelName || "llama-3.1-8b",
+      modelName: chatbot.modelName || "llama3.1-8b",
       maxTokens: chatbot.maxTokens ?? 1000,
       welcomeMessage: chatbot.welcomeMessage || "Hi! How can I help you today?",
       errorMessage:
@@ -117,6 +125,8 @@ export default function SettingsPage({
         "Sorry, something went wrong. Please try again.",
       responseLanguage: chatbot.responseLanguage || "English",
       timezone: chatbot.timezone || "UTC",
+      allowedDomains: chatbot.allowedDomains || [],
+      isDomainWhitelistingEnabled: chatbot.isDomainWhitelistingEnabled || false,
     };
 
     // Compare strictly using JSON string (deep equality check)
@@ -163,11 +173,10 @@ export default function SettingsPage({
           <button
             onClick={handleSave}
             disabled={!hasChanges || isSaving}
-            className={`flex items-center gap-2 px-6 py-2 rounded-lg font-semibold transition-all duration-300 shadow-sm ${
-              hasChanges
+            className={`flex items-center gap-2 px-6 py-2 rounded-lg font-semibold transition-all duration-300 shadow-sm ${hasChanges
                 ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20 scale-105" // 🟢 Active: Visual Pop!
                 : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed" // ⚪️ Inactive: Muted
-            }`}
+              }`}
           >
             {isSaving ? <FiLoader className="animate-spin" /> : <FiSave />}
             {isSaving ? "Saving..." : "Save Changes"}
@@ -211,18 +220,12 @@ export default function SettingsPage({
             </h2>
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <SelectField
-                  label="Model Engine"
-                  value={formData.modelName}
-                  onChange={(value) =>
-                    setFormData({ ...formData, modelName: value })
-                  }
-                  options={[
-                    { value: "llama-3.1-8b", label: "Llama 3.1 8B (Fast)" },
-                    { value: "llama-3.3-70b", label: "Llama 3.3 70B (Smart)" },
-                    { value: "gpt-oss-120b", label: "GPT-OSS-120B (Pro)" },
-                  ]}
-                />
+                <div className="p-4 bg-muted/30 rounded-xl border border-border">
+                   <p className="text-sm text-muted-foreground flex items-center gap-2">
+                     <FiSettingsIcon className="animate-spin-slow" />
+                     Model Engine: <span className="text-foreground font-semibold">Llama 3.1 8B (Auto-Optimized)</span>
+                   </p>
+                </div>
                 <SliderField
                   label="Creativity (Temperature)"
                   value={formData.temperature}
@@ -318,6 +321,99 @@ export default function SettingsPage({
                 }
                 placeholder="Sorry, I encountered an issue..."
               />
+            </div>
+          </div>
+
+          {/* 4. SECURITY & WHITELISTING SECTION */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-2">
+              <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <FiShield className="text-primary" />
+                Security & Privacy
+              </h2>
+              <div className="flex items-center gap-2">
+                 <span className="text-xs text-muted-foreground uppercase font-bold">Whitelisting</span>
+                 <button
+                    onClick={() => setFormData({...formData, isDomainWhitelistingEnabled: !formData.isDomainWhitelistingEnabled})}
+                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none ${formData.isDomainWhitelistingEnabled ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                 >
+                    <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${formData.isDomainWhitelistingEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                 </button>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+               <div className="p-4 bg-muted/20 border border-border/50 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                     <p className="text-xs font-semibold text-foreground">Authorized Domains</p>
+                     <p className="text-[10px] text-muted-foreground italic">Add domains where the widget can be embedded</p>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2 min-h-[40px]">
+                      {formData.allowedDomains.map(domain => (
+                         <div key={domain} className="flex items-center gap-2 bg-card border border-primary/20 px-3 py-1 rounded-full text-xs animate-in zoom-in duration-200">
+                            <span className="text-foreground">{domain}</span>
+                            <button 
+                              onClick={() => setFormData({...formData, allowedDomains: formData.allowedDomains.filter(d => d !== domain)})}
+                              className="text-muted-foreground hover:text-destructive transition-colors"
+                            >
+                               <FiX size={14} />
+                            </button>
+                         </div>
+                      ))}
+                      {formData.allowedDomains.length === 0 && (
+                         <p className="text-xs text-muted-foreground/50 py-2 italic">No domains authorized yet.</p>
+                      )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <input 
+                           id="domain-input"
+                           type="text"
+                           placeholder="example.com"
+                           className="w-full bg-card border border-border rounded-lg px-3 py-1.5 text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+                           onKeyDown={(e) => {
+                             if (e.key === 'Enter') {
+                               e.preventDefault();
+                               const input = e.currentTarget;
+                               const val = input.value.trim();
+                               if (val && !formData.allowedDomains.includes(val)) {
+                                 setFormData({...formData, allowedDomains: [...formData.allowedDomains, val]});
+                                 input.value = '';
+                               }
+                             }
+                           }}
+                        />
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const input = document.getElementById('domain-input') as HTMLInputElement;
+                          const val = input.value.trim();
+                          if (val && !formData.allowedDomains.includes(val)) {
+                             setFormData({...formData, allowedDomains: [...formData.allowedDomains, val]});
+                             input.value = '';
+                          }
+                        }}
+                        className="p-2 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition-colors border border-primary/20"
+                      >
+                         <FiPlus size={18} />
+                      </button>
+                  </div>
+               </div>
+
+               <div className="flex items-start gap-4 p-4 bg-primary/5 rounded-xl border border-primary/10">
+                  <div className="p-2 bg-primary/20 rounded-lg text-primary">
+                     <FiShield size={20} />
+                  </div>
+                  <div>
+                      <p className="text-xs font-bold text-foreground">High Security Mode</p>
+                      <p className="text-[10px] text-muted-foreground leading-relaxed mt-1">
+                         When enabled, the chat widget will only function on the authorized domains listed above. 
+                         If disabled, the widget is publicly embeddable anywhere.
+                      </p>
+                  </div>
+               </div>
             </div>
           </div>
 

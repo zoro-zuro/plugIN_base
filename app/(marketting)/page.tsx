@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ArrowRight,
   UploadCloud,
@@ -16,8 +16,73 @@ import {
   Globe,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { MagneticButton } from "@/components/ui/MagneticButton";
+import { SectionHeading } from "@/components/ui/SectionHeading";
+import { BentoFeatures } from "@/components/ui/BentoFeatures";
+import { BackgroundRippleEffect } from "@/components/ui/background-ripple-effect";
+import { Logo } from "@/components/ui/Logo";
 
-// --- ANIMATION COMPONENTS (Unchanged) ---
+// --- ANIMATION COMPONENTS ---
+const Counter = ({ value, suffix = "", prefix = "", startValue = 0, decimals = 0 }: { value: number, suffix?: string, prefix?: string, startValue?: number, decimals?: number }) => {
+  const [display, setDisplay] = useState(startValue.toFixed(decimals));
+  const containerRef = useRef<HTMLSpanElement>(null);
+  const hasAnimated = useRef(false);
+
+  useEffect(() => {
+    function animate() {
+      let startTime: number | null = null;
+      const duration = 2000;
+      
+      const step = (timestamp: number) => {
+        if (!startTime) startTime = timestamp;
+        const progress = Math.min((timestamp - startTime) / duration, 1);
+        const ease = 1 - Math.pow(1 - progress, 3);
+        const current = startValue + (value - startValue) * ease;
+        
+        setDisplay(current.toFixed(decimals));
+        
+        if (progress < 1) {
+          requestAnimationFrame(step);
+        } else {
+          hasAnimated.current = true;
+        }
+      };
+      
+      requestAnimationFrame(step);
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !hasAnimated.current) {
+        animate();
+      }
+    }, { threshold: 0.5 });
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => {
+      if (containerRef.current) {
+        observer.unobserve(containerRef.current);
+      }
+    };
+  }, [value, startValue, decimals]);
+
+  return <span ref={containerRef}>{prefix}{display}{suffix}</span>;
+};
+
+const FadeInWhenVisible = ({ children, className }: { children: React.ReactNode, className?: string }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 30 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true, margin: "-10%" }}
+    transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+    className={className}
+  >
+    {children}
+  </motion.div>
+);
+
 const UploadStep = () => (
   <motion.div
     key="upload-step"
@@ -25,17 +90,16 @@ const UploadStep = () => (
     animate={{ opacity: 1, scale: 1 }}
     exit={{ opacity: 0, scale: 0.9 }}
     transition={{ duration: 0.5, ease: "easeOut" }}
-    className="flex flex-col items-center justify-center h-full text-center p-6 bg-gradient-to-br from-background to-muted/30"
+    className="flex flex-col items-center justify-center h-full text-center p-6 bg-[#F7F4EF]"
   >
-    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-primary/5 border-2 border-dashed border-primary/20 flex items-center justify-center mb-6 shadow-xl shadow-primary/5">
-      <UploadCloud className="h-8 w-8 sm:h-10 sm:w-10 text-primary animate-bounce" />
+    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-[#EAB564]/10 border-2 border-dashed border-[#EAB564]/30 flex items-center justify-center mb-6 shadow-xl shadow-[#EAB564]/5">
+      <UploadCloud className="h-8 w-8 sm:h-10 sm:w-10 text-[#EAB564] animate-bounce" />
     </div>
-    <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-2">
+    <h3 style={{ fontFamily: 'Georgia, serif' }} className="text-xl sm:text-2xl font-black text-[#1A1714] mb-2">
       Upload your knowledge
     </h3>
-    <p className="text-sm sm:text-base text-muted-foreground max-w-sm">
-      Drag & drop PDFs, Docs, or connect your Notion & website sitemaps
-      instantly.
+    <p className="text-sm sm:text-base text-[#5C5448] max-w-sm">
+      Drag & drop PDFs, Docs, or connect your website sitemaps instantly.
     </p>
   </motion.div>
 );
@@ -47,35 +111,35 @@ const ProcessingStep = () => (
     animate={{ opacity: 1, scale: 1 }}
     exit={{ opacity: 0, scale: 0.9 }}
     transition={{ duration: 0.5, ease: "easeOut" }}
-    className="flex flex-col items-center justify-center h-full text-center p-6 bg-gradient-to-br from-background to-muted/30"
+    className="flex flex-col items-center justify-center h-full text-center p-6 bg-[#F7F4EF]"
   >
     <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center mb-8">
       <motion.div
         animate={{ rotate: 360 }}
         transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
-        className="absolute inset-0 border-4 border-dashed border-primary/20 rounded-full"
+        className="absolute inset-0 border-4 border-dashed border-[#EAB564]/20 rounded-full"
       />
       <motion.div
         animate={{ rotate: -360 }}
         transition={{ repeat: Infinity, duration: 12, ease: "linear" }}
-        className="absolute inset-3 border-2 border-dashed border-fuchsia-500/20 rounded-full"
+        className="absolute inset-3 border-2 border-dashed border-amber-500/10 rounded-full"
       />
-      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-primary/10 flex items-center justify-center shadow-inner">
-        <Database className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-[#EAB564]/10 flex items-center justify-center shadow-inner">
+        <Database className="h-6 w-6 sm:h-8 sm:w-8 text-[#D4924A]" />
       </div>
     </div>
-    <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-2">
+    <h3 style={{ fontFamily: 'Georgia, serif' }} className="text-xl sm:text-2xl font-black text-[#1A1714] mb-2">
       Training your AI Agent...
     </h3>
-    <p className="text-sm sm:text-base text-muted-foreground max-w-sm mb-6">
+    <p className="text-sm sm:text-base text-[#5C5448] max-w-sm mb-6">
       Chunking data, generating vectors, and optimizing for semantic search.
     </p>
-    <div className="w-48 sm:w-64 h-2 bg-muted rounded-full overflow-hidden">
+    <div className="w-48 sm:w-64 h-2 bg-[#E2D9CC] rounded-full overflow-hidden">
       <motion.div
         initial={{ width: 0 }}
         animate={{ width: "100%" }}
         transition={{ duration: 3.5, ease: "easeInOut" }}
-        className="h-full bg-gradient-to-r from-primary to-fuchsia-500"
+        className="h-full bg-gradient-to-r from-[#EAB564] to-[#C87A38]"
       />
     </div>
   </motion.div>
@@ -88,15 +152,14 @@ const ReadyStep = () => (
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0, y: -20 }}
     transition={{ duration: 0.5 }}
-    className="flex flex-col h-full bg-card/50"
+    className="flex flex-col h-full bg-[#FFFFFF]"
   >
-    {/* Chat Header */}
-    <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-border bg-card/80 backdrop-blur flex items-center gap-3 sm:gap-4">
-      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary to-fuchsia-600 flex items-center justify-center text-white shadow-lg shadow-primary/20">
+    <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[#E2D9CC] bg-[#F7F4EF]/80 backdrop-blur flex items-center gap-3 sm:gap-4">
+      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-[#1A1714] flex items-center justify-center text-[#EAB564] shadow-lg shadow-[#1A1714]/20">
         <Bot size={18} className="sm:w-5 sm:h-5" />
       </div>
       <div>
-        <p className="text-sm sm:text-base font-bold text-foreground">
+        <p className="text-sm sm:text-base font-bold text-[#1A1714]">
           Custom Assistant
         </p>
         <div className="flex items-center gap-1.5">
@@ -104,27 +167,24 @@ const ReadyStep = () => (
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
-          <span className="text-[10px] sm:text-xs font-medium text-emerald-500">
-            Online & Ready
+          <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-emerald-600">
+            All Systems Active
           </span>
         </div>
       </div>
     </div>
 
-    {/* Chat Area */}
-    <div className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-hidden flex flex-col justify-end">
+    <div className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-hidden flex flex-col justify-end bg-[#F7F4EF]/30">
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.3 }}
         className="flex gap-3 sm:gap-4"
       >
-        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-muted flex-shrink-0 flex items-center justify-center">
-          <span className="text-[10px] sm:text-xs font-bold text-muted-foreground">
-            U
-          </span>
+        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#E2D9CC] flex-shrink-0 flex items-center justify-center">
+          <span className="text-[10px] sm:text-xs font-bold text-[#5C5448]">U</span>
         </div>
-        <div className="p-3 sm:p-4 rounded-2xl rounded-tl-none bg-muted/80 text-xs sm:text-sm text-foreground max-w-[85%]">
+        <div className="p-3 sm:p-4 rounded-2xl rounded-tl-none bg-[#FFFFFF] border border-[#E2D9CC] text-xs sm:text-sm text-[#1A1714] max-w-[85%] shadow-sm">
           What is the return policy for international orders?
         </div>
       </motion.div>
@@ -135,10 +195,10 @@ const ReadyStep = () => (
         transition={{ delay: 1 }}
         className="flex gap-3 sm:gap-4 flex-row-reverse"
       >
-        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary/10 flex-shrink-0 flex items-center justify-center">
-          <Bot size={14} className="text-primary sm:w-4 sm:h-4" />
+        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#1A1714] flex-shrink-0 flex items-center justify-center">
+          <Bot size={14} className="text-[#EAB564] sm:w-4 sm:h-4" />
         </div>
-        <div className="p-3 sm:p-4 rounded-2xl rounded-tr-none bg-primary text-primary-foreground text-xs sm:text-sm shadow-md shadow-primary/10 max-w-[90%]">
+        <div className="p-3 sm:p-4 rounded-2xl rounded-tr-none bg-[#1A1714] text-[#F7F4EF] text-xs sm:text-sm shadow-xl shadow-[#1A1714]/20 max-w-[90%]">
           International orders can be returned within 30 days. Original shipping
           costs are non-refundable.
         </div>
@@ -160,294 +220,298 @@ export default function Home() {
   }, [steps.length]);
 
   return (
-    <div className="flex flex-col min-h-screen overflow-hidden">
-      {/* HERO SECTION */}
-      <section className="relative pt-32 pb-20 lg:pt-36 lg:pb-40 overflow-hidden">
-        {/* Background Blobs */}
-        <div className="absolute top-0 left-1/2 -z-10 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-primary/10 blur-[80px] sm:blur-[120px] dark:bg-primary/20" />
-
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs sm:text-sm font-medium text-primary mb-6 sm:mb-8 animate-fade-in backdrop-blur-sm hover:bg-primary/10 transition-colors cursor-default">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-            </span>
-            <span>Docs in. Chatbot out.</span>
-          </div>
-
-          {/* Main Headline */}
-          <h1 className="mx-auto max-w-4xl text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-foreground mb-6 sm:mb-8 animate-slide-up leading-[1.15]">
-            Train a chatbot on your files <br className="hidden sm:block" />
-            <span className="gradient-text block sm:inline mt-2 sm:mt-0">
-              then plug it into your website.
-            </span>
-          </h1>
-
-          <p
-            className="mx-auto max-w-2xl text-base sm:text-lg text-muted-foreground mb-8 sm:mb-12 leading-relaxed animate-slide-up px-4"
-            style={{ animationDelay: "0.1s" }}
-          >
-            Build custom AI agents trained on your data and plugin them into any
-            website in seconds. No coding required.
-          </p>
-
-          {/* CTA Buttons */}
-          <div
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 sm:mb-20 animate-slide-up px-4"
-            style={{ animationDelay: "0.2s" }}
-          >
-            <Link
-              href="/chatbot/create"
-              className="w-full sm:w-auto h-12 px-8 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-primary/25 flex items-center justify-center gap-2"
-            >
-              Build your Chatbot <ArrowRight className="h-4 w-4 " />
-            </Link>
-          </div>
-
-          {/* HERO ANIMATED VISUAL */}
-          <div
-            className="relative mx-auto max-w-3xl animate-slide-up px-2 sm:px-0"
-            style={{ animationDelay: "0.3s" }}
-          >
-            <div className="absolute -inset-1 bg-gradient-to-r from-primary to-fuchsia-600 rounded-[2rem] blur opacity-20" />
-            <div className="relative rounded-[1.5rem] sm:rounded-[1.75rem] border border-border bg-card/80 backdrop-blur-xl p-2 sm:p-3 shadow-2xl">
-              {/* Browser Header Fake */}
-              <div className="absolute top-0 left-0 right-0 h-10 sm:h-12 bg-muted/50 rounded-t-[1.25rem] sm:rounded-t-[1.5rem] border-b border-border flex items-center px-4 gap-2">
-                <div className="flex gap-1.5">
-                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-400/80" />
-                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-amber-400/80" />
-                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-400/80" />
-                </div>
-                <div className="mx-auto text-[10px] font-mono text-muted-foreground opacity-50 truncate max-w-[150px] sm:max-w-none">
-                  pluginbase.ai/demo
-                </div>
-              </div>
-
-              {/* Animation Container */}
-              <div className="mt-10 sm:mt-12 aspect-[4/5] sm:aspect-[16/10] w-full bg-background rounded-xl overflow-hidden relative border border-border/50">
-                <AnimatePresence mode="wait">
-                  {steps[step] === "upload" && <UploadStep />}
-                  {steps[step] === "processing" && <ProcessingStep />}
-                  {steps[step] === "ready" && <ReadyStep />}
-                </AnimatePresence>
-              </div>
-
-              {/* Step Indicators */}
-              <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-                {steps.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setStep(i)}
-                    className={`h-1.5 rounded-full transition-all duration-500 ${
-                      step === i
-                        ? "w-6 sm:w-8 bg-primary"
-                        : "w-1.5 bg-primary/20 hover:bg-primary/40"
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
+    <div className="flex flex-col min-h-screen bg-[#F7F4EF] text-[#1A1714]">
+      {/* 01 — HERO SECTION */}
+      <section className="relative px-6 py-24 lg:py-32 overflow-hidden bg-[#F7F4EF]">
+        <div className="absolute inset-0 z-0">
+          <BackgroundRippleEffect rows={14} cellSize={56} />
         </div>
-      </section>
 
-      {/* HOW IT WORKS (Gifo Style Flow) */}
-      <section
-        id="how-it-works"
-        className="py-16 sm:py-24 border-y border-border bg-secondary/30 relative"
-      >
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="text-center mb-12 sm:mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
-              <Zap className="h-4 w-4" /> Process
-            </div>
-            <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-6">
-              How it works
-            </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto text-base sm:text-lg">
-              We simplify the complex process of RAG (Retrieval Augmented
-              Generation) into three simple steps.
-            </p>
-          </div>
+        <div className="absolute top-0 left-1/2 z-0 h-[800px] w-[800px] -translate-x-1/2 rounded-full bg-[#EAB564]/5 blur-[120px] pointer-events-none" />
 
-          <div className="grid md:grid-cols-3 gap-12 md:gap-8 relative">
-            {/* Connecting Line (Desktop) */}
-            <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-transparent via-primary/30 to-transparent border-t border-dashed border-primary/30 z-0"></div>
-
-            {[
-              {
-                step: "01",
-                icon: <Upload className="h-6 w-6" />,
-                title: "Connect Data",
-                desc: "Upload PDFs, sitemaps, or text files. We automatically process and chunk your data.",
-              },
-              {
-                step: "02",
-                icon: <Code className="h-6 w-6" />,
-                title: "Customize & Embed",
-                desc: "Style your widget to match your brand. Copy one line of code to your site.",
-              },
-              {
-                step: "03",
-                icon: <BarChart3 className="h-6 w-6" />,
-                title: "Analyze & Improve",
-                desc: "View chat logs, identify knowledge gaps, and update your bot in real-time.",
-              },
-            ].map((item, i) => (
-              <div
-                key={i}
-                className="relative z-10 flex flex-col items-center text-center group"
+        <div className="relative z-10 mx-auto max-w-7xl pointer-events-none">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
+            <div className="text-left flex flex-col items-start pointer-events-auto">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex items-center gap-3 mb-8"
               >
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-card border border-border shadow-lg flex items-center justify-center mb-6 group-hover:border-primary/50 group-hover:shadow-primary/20 transition-all duration-300 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                    {item.icon}
+                <div className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#EAB564] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#EAB564]"></span>
+                </div>
+                <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#9B7B4E]">
+                  Docs in. Chatbot out.
+                </span>
+              </motion.div>
+
+              <motion.h1
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                style={{ fontFamily: 'Georgia, serif' }}
+                className="text-5xl sm:text-6xl lg:text-7xl font-black text-[#1A1714] leading-[1.05] tracking-tight mb-8"
+              >
+                Train a chatbot <br /> on your files. <br />
+                <span className="relative inline-block text-[#EAB564]">
+                  Then plug it into your website.
+                  <svg className="absolute -bottom-2 left-0 w-full h-3 text-[#EAB564]/40" viewBox="0 0 300 20" fill="none" preserveAspectRatio="none">
+                    <path d="M5 15C50 5 150 5 295 15" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
+                  </svg>
+                </span>
+              </motion.h1>
+
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2, duration: 0.8 }}
+                className="text-lg sm:text-xl text-[#5C5448] mb-12 max-w-lg leading-relaxed font-normal"
+              >
+                Build custom AI agents trained on your documentation, PDFs, and website data. Plugin them into any website in seconds. No coding required.
+              </motion.p>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="flex flex-col sm:flex-row items-center gap-4"
+              >
+                <Link href="/chatbot/create">
+                  <MagneticButton variant="primary">
+                    Build your Chatbot
+                  </MagneticButton>
+                </Link>
+                <Link href="#features">
+                  <MagneticButton variant="ghost">
+                    See how it works
+                  </MagneticButton>
+                </Link>
+              </motion.div>
+            </div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3, duration: 1 }}
+              className="relative hidden lg:block pointer-events-auto"
+            >
+              <div className="relative rounded-[2.5rem] border border-[#E2D9CC] bg-[#FFFFFF]/80 backdrop-blur-3xl p-3 shadow-[0_32px_80px_rgba(26,23,20,0.14)]">
+                <div className="absolute top-0 left-0 right-0 h-14 bg-[#F7F4EF] rounded-t-[2.25rem] border-b border-[#E2D9CC] flex items-center px-6 gap-2">
+                  <div className="flex gap-2">
+                    <div className="w-3.5 h-3.5 rounded-full bg-[#E2D9CC]/50" />
+                    <div className="w-3.5 h-3.5 rounded-full bg-[#E2D9CC]/70" />
+                    <div className="w-3.5 h-3.5 rounded-full bg-[#EAB564]" />
+                  </div>
+                  <div className="mx-auto text-[11px] font-mono text-[#8C7B68] font-bold opacity-70 tracking-tight">
+                    pluginbase.ai/demo/widget
                   </div>
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-foreground mb-3">
-                  {item.title}
-                </h3>
-                <p className="text-muted-foreground leading-relaxed text-sm sm:text-base">
-                  {item.desc}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* FEATURES GRID */}
-      <section id="features" className="py-16 sm:py-24 bg-secondary/20">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mb-12 sm:mb-16">
-            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl mb-6">
-              Everything you need to build <br />
-              <span className="gradient-text">powerful AI agents</span>
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              {
-                icon: <Database className="h-6 w-6 text-violet-500" />,
-                title: "Hybrid Search",
-                desc: "Combines vector semantic search with keyword search for maximum accuracy.",
-              },
-              {
-                icon: <Globe className="h-6 w-6 text-blue-500" />,
-                title: "Multi-Source",
-                desc: "Train on websites, Notion pages, Google Docs, and raw text simultaneously.",
-              },
-              {
-                icon: <BarChart3 className="h-6 w-6 text-emerald-500" />,
-                title: "Deep Analytics",
-                desc: "Understand what your users are asking and improve your knowledge base.",
-              },
-              {
-                icon: <Shield className="h-6 w-6 text-rose-500" />,
-                title: "Secure & Private",
-                desc: "Your data is encrypted at rest and in transit. We prioritize your privacy.",
-              },
-              {
-                icon: <Zap className="h-6 w-6 text-amber-500" />,
-                title: "Streaming API",
-                desc: "Fast, token-by-token streaming responses just like ChatGPT.",
-              },
-              {
-                icon: <MessageSquare className="h-6 w-6 text-pink-500" />,
-                title: "Customizable UI",
-                desc: "Match the chat widget to your brand colors and personality.",
-              },
-            ].map((feature, idx) => (
-              <div
-                key={idx}
-                className="group p-6 sm:p-8 rounded-3xl bg-card border border-border hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300"
-              >
-                <div className="mb-6 inline-flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-secondary group-hover:bg-primary/10 transition-colors">
-                  {feature.icon}
+                <div className="mt-14 aspect-[16/11] w-full bg-[#FFFFFF] rounded-2xl overflow-hidden relative border border-[#E2D9CC]/50">
+                  <AnimatePresence mode="wait">
+                    {steps[step] === "upload" && <UploadStep />}
+                    {steps[step] === "processing" && <ProcessingStep />}
+                    {steps[step] === "ready" && <ReadyStep />}
+                  </AnimatePresence>
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-foreground mb-3">
-                  {feature.title}
-                </h3>
-                <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-                  {feature.desc}
-                </p>
               </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* 02 — DARK METRICS SECTION (Reordered) */}
+      <section className="py-20 bg-[#1A1714] border-y border-[#EAB564]/10 relative overflow-hidden">
+        <div className="absolute top-0 right-0 h-64 w-64 bg-[#EAB564]/5 blur-[100px]" />
+        <div className="mx-auto max-w-7xl px-6 relative z-10">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
+            {[
+              { label: "Average Latency", component: <Counter value={1.2} startValue={8.5} decimals={1} prefix="< " suffix="s" /> },
+              { label: "Global Edge Nodes", component: <Counter value={280} startValue={0} suffix="+" /> },
+              { label: "Integration Effort", component: <Counter value={1} startValue={250} suffix=" Line" /> },
+              { label: "Server Management", component: <Counter value={0} startValue={12} /> }
+            ].map((stat, i) => (
+              <FadeInWhenVisible key={stat.label} className="flex flex-col gap-2">
+                <div style={{ fontFamily: 'Georgia, serif' }} className="text-4xl md:text-5xl font-black text-[#F7F4EF]">
+                  {stat.component}
+                </div>
+                <div className="text-xs font-bold uppercase tracking-[0.2em] text-[#EAB564]">
+                  {stat.label}
+                </div>
+              </FadeInWhenVisible>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA SECTION */}
-      <section className="py-16 sm:py-24 px-4 sm:px-6">
-        <div className="mx-auto max-w-5xl">
-          <div className="relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] bg-foreground px-6 py-16 sm:py-20 text-center shadow-2xl sm:px-12">
-            {/* CTA Background Effects */}
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-              <div className="absolute top-0 -left-10 h-64 w-64 sm:h-96 sm:w-96 rounded-full bg-primary/40 blur-[80px] sm:blur-[100px]" />
-              <div className="absolute bottom-0 -right-10 h-64 w-64 sm:h-96 sm:w-96 rounded-full bg-fuchsia-600/40 blur-[80px] sm:blur-[100px]" />
+      {/* 03 — CAPABILITIES BENTO GRID (Stay Light) */}
+      <section id="features" className="py-24 lg:py-28 bg-[#F7F4EF] border-b border-[#E2D9CC]/30">
+        <div className="mx-auto max-w-7xl px-6">
+          <SectionHeading
+            label="Capabilities"
+            title="Everything you need to build powerful AI agents"
+            centered
+            theme="light"
+          />
+
+          <FadeInWhenVisible className="mt-24">
+            <BentoFeatures />
+          </FadeInWhenVisible>
+        </div>
+      </section>
+
+      {/* 04 — PROCESS SECTION (Stay Dark) */}
+      <section id="how-it-works" className="py-20 lg:py-24 bg-[#1A1714] relative">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="flex flex-col lg:flex-row gap-16 lg:gap-24 items-start">
+            {/* Sticky Label/Title */}
+            <div className="lg:sticky lg:top-32 lg:w-1/3 text-left">
+              <SectionHeading
+                label="Process"
+                title="From your data to a live chatbot in minutes"
+                description="Three simple steps to build, customize, and launch your custom AI agent."
+                theme="dark"
+              />
             </div>
 
-            <div className="relative z-10">
-              <h2 className="mx-auto max-w-2xl text-2xl font-bold tracking-tight text-background sm:text-5xl mb-6">
-                Ready to upgrade your website?
-              </h2>
-              <p className="mx-auto max-w-xl text-base sm:text-lg text-background/70 mb-10">
-                Join thousands of developers building the future of
-                conversational AI with PluginBase.
-              </p>
-              <div className="flex flex-col sm:flex-row justify-center gap-4">
-                <Link
-                  href="/chatbot/create"
-                  className="rounded-full border bg-black/40 border-black/40 px-8 py-4 text-lg font-bold text-white hover:bg-black/50 transition-colors w-full sm:w-auto block"
+            {/* Scroll-Reveal Steps Container */}
+            <div className="lg:w-2/3 space-y-32 lg:space-y-48">
+              {[
+                {
+                  step: "01",
+                  icon: <Upload />,
+                  title: "Feed your AI",
+                  desc: "Upload PDFs, connect Notion docs, or sync your website. We'll automatically organize your data so your AI can find and deliver the right answers fast.",
+                },
+                {
+                  step: "02",
+                  icon: <Code />,
+                  title: "Customize & Embed",
+                  desc: "Design your chatbot to match your site's brand perfectly. When you're ready, copy and paste one script tag to add it to your website in seconds.",
+                },
+                {
+                  step: "03",
+                  icon: <BarChart3 />,
+                  title: "Monitor & Refine",
+                  desc: "Track conversations and see exactly what users are asking. Use real-time analytics to update your AI's knowledge and keep responses helpful.",
+                },
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 60, scale: 0.98 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                  viewport={{ once: false, margin: "-20%" }}
+                  transition={{
+                    duration: 0.8,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                  className="relative p-10 lg:p-14 rounded-[3rem] bg-[#1A1714] border border-[#EAB564]/10 shadow-2xl group overflow-hidden"
                 >
-                  Get started now
-                </Link>
-              </div>
+                  {/* Decorative background number */}
+                  <div style={{ fontFamily: 'Georgia, serif' }} className="absolute -top-10 -right-4 text-[12rem] font-black text-[#5C5448]/5 pointer-events-none select-none">
+                    {item.step}
+                  </div>
+
+                  <div className="relative z-10">
+                    <div className="w-16 h-16 rounded-2xl bg-[#EAB564]/10 flex items-center justify-center mb-10 group-hover:scale-110 transition-transform duration-700">
+                      <div className="h-7 w-7 text-[#EAB564]">{item.icon}</div>
+                    </div>
+
+                    <h3 style={{ fontFamily: 'Georgia, serif' }} className="text-3xl lg:text-4xl font-black text-[#F7F4EF] mb-8">
+                      {item.title}
+                    </h3>
+                    <p className="text-lg lg:text-xl text-[#8C7B68] leading-relaxed max-w-2xl">
+                      {item.desc}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="border-t border-border bg-card pt-12 pb-8 sm:pt-16">
-        <div className="mx-auto max-w-7xl px-6 flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="flex flex-col gap-2 items-center md:items-start text-center md:text-left">
-            <div className="flex items-center">
-              <div className="flex h-6 w-6 items-center justify-center rounded bg-transparent text-xs text-white font-bold">
-                <img src="/logo.png" alt="Logo" className="w-10 h-6" />
-              </div>
-              <span className="font-bold gradient-text text-lg">Plugin</span>
+      {/* 05 — CTA SECTION (Light card with gradient corners) */}
+      <section className="py-24 lg:py-32 px-6 bg-[#F7F4EF]">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          className="mx-auto max-w-6xl relative overflow-hidden rounded-[3rem] bg-[#FFFFFF] px-12 py-24 text-center shadow-2xl border border-[#E2D9CC]/50"
+        >
+          {/* Deep Ink Atmospheric Gradients */}
+          <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+            <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-[#1A1714]/15 blur-[100px]" />
+            <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-[#413B34]/15 blur-[100px]" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 h-64 w-full bg-[#EAB564]/5 blur-[80px]" />
+          </div>
+
+          {/* Premium Gold Inset Frame with Shine */}
+          <div className="absolute inset-2 z-[5] rounded-[2.5rem] border-2 border-[#EAB564]/40 pointer-events-none overflow-hidden">
+            <motion.div
+              animate={{ x: ["-100%", "200%"] }}
+              transition={{ repeat: Infinity, duration: 4, ease: "linear", repeatDelay: 2 }}
+              className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-[#EAB564]/30 to-transparent skew-x-[-20deg]"
+            />
+          </div>
+
+          <div className="relative z-10 flex flex-col items-center">
+            <h2
+              style={{ fontFamily: 'Georgia, serif' }}
+              className="mx-auto max-w-3xl text-4xl sm:text-6xl font-black text-[#1A1714] leading-[1.1] mb-8"
+            >
+              The end of silent documentation. Build your agent today.
+            </h2>
+            <p className="mx-auto max-w-xl text-lg text-[#5C5448] mb-12">
+              Transform your static data into a high-fidelity conversational engine. Join a new generation of builders engineering the next wave of RAG.
+            </p>
+            <Link href="/chatbot/create">
+              <MagneticButton variant="primary">
+                Get Started for Free
+              </MagneticButton>
+            </Link>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* 08 — FOOTER */}
+      <footer className="bg-[#0A0908] pt-24 pb-12 border-t border-[#EAB564]/5">
+        <div className="mx-auto max-w-7xl px-6 flex flex-col md:flex-row justify-between items-start gap-12">
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center gap-3">
+              <Logo className="h-10 w-10 opacity-80" />
+              <span style={{ fontFamily: 'Georgia, serif' }} className="font-black text-2xl text-[#F7F4EF]">PluginBase</span>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Made with ♥️ and lot of ☕️ {""}
-              <span>
-                <Link
-                  href="https://sheik-portfolio-taupe.vercel.app/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  By{" "}
-                  <span className="hover:text-primary transition-colors font-medium">
-                    Shiek
-                  </span>
-                  .
-                </Link>
-              </span>
+            <p className="text-sm text-[#8C7B68] max-w-xs leading-relaxed">
+              Engineering high-fidelity RAG infrastructure for teams that value absolute precision and performance.
             </p>
           </div>
 
-          <div className="flex gap-8 text-sm font-medium text-muted-foreground">
-            <Link
-              href="https://github.com/zoro-zuro/plugIN_base.git"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-primary transition-colors"
-            >
-              GitHub
-            </Link>
+          <div className="flex flex-col sm:flex-row gap-16 md:gap-24">
+            <div className="flex flex-col gap-6 text-sm">
+              <h4 className="text-[#F7F4EF] font-bold uppercase tracking-widest text-xs">Platform</h4>
+              <div className="flex flex-col gap-4">
+                <Link href="#features" className="text-[#8C7B68] hover:text-[#EAB564] transition-colors">Capabilities</Link>
+                <Link href="#how-it-works" className="text-[#8C7B68] hover:text-[#EAB564] transition-colors">The Protocol</Link>
+                <Link href="/chatbot/create" className="text-[#8C7B68] hover:text-[#EAB564] transition-colors">Create Agent</Link>
+                <Link href="/chatbot/manage" className="text-[#8C7B68] hover:text-[#EAB564] transition-colors">Dashboard</Link>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-6 text-sm">
+              <h4 className="text-[#F7F4EF] font-bold uppercase tracking-widest text-xs">Social</h4>
+              <div className="flex flex-col gap-4">
+                <Link href="#" className="text-[#8C7B68] hover:text-[#EAB564] transition-colors">GitHub</Link>
+                <Link href="#" className="text-[#8C7B68] hover:text-[#EAB564] transition-colors">Twitter</Link>
+              </div>
+            </div>
           </div>
+        </div>
+
+        <div className="mx-auto max-w-7xl px-6 mt-24 pt-8 border-t border-[#EAB564]/5 flex flex-col md:flex-row justify-between items-center gap-6">
+          <p className="text-xs text-[#5C5448]"> © 2026 PluginBase AI. All rights reserved. </p>
+          <p className="text-xs text-[#5C5448]"> Made with ♥️ by Shiek. </p>
         </div>
       </footer>
     </div>

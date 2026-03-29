@@ -75,6 +75,10 @@ export default defineSchema({
     // Connection Tracking
     lastActiveAt: v.optional(v.number()),
     isConnected: v.optional(v.boolean()),
+
+    // Security and Whitelisting
+    allowedDomains: v.optional(v.array(v.string())),
+    isDomainWhitelistingEnabled: v.optional(v.boolean()),
   })
     .index("by_userId", ["userId"])
     .index("by_chatbotId", ["chatbotId"])

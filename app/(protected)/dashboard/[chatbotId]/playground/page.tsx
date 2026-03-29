@@ -296,7 +296,7 @@ export default function PlaygroundPage({
     <div className="flex flex-col h-screen bg-background relative">
       <div className="h-16 border-b border-border bg-card/80 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-fuchsia-600 flex items-center justify-center text-white shadow-sm">
+          <div className="w-8 h-8 rounded-lg bg-[#1A1714] flex items-center justify-center text-[#EAB564] shadow-md">
             <Zap size={16} className="fill-current" />
           </div>
           <div>
@@ -323,14 +323,14 @@ export default function PlaygroundPage({
       </div>
 
       <div className="flex-1 overflow-y-auto scroll-smooth">
-        <div className="max-w-3xl mx-auto px-4 py-8">
+        <div className="max-w-5xl mx-auto py-8 px-6">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center mt-20 text-center animate-slide-up">
-              <div className="w-20 h-20 bg-primary/5 rounded-3xl flex items-center justify-center mb-6 ring-1 ring-primary/20">
-                <FiCpu className="text-4xl text-primary" />
+              <div className="w-20 h-20 bg-[#F7F4EF] rounded-3xl flex items-center justify-center mb-6 border border-[#E2D9CC]">
+                <FiCpu className="text-4xl text-[#EAB564]" />
               </div>
-              <h3 className="text-xl font-bold text-foreground mb-2">
-                Testing <span className="text-primary">{chatbot.name}</span>
+              <h3 style={{ fontFamily: 'Georgia, serif' }} className="text-xl font-black text-[#1A1714] mb-2">
+                Testing <span className="text-[#EAB564] underline decoration-[#EAB564]/30">{chatbot.name}</span>
               </h3>
               <p className="text-muted-foreground max-w-sm mx-auto text-sm leading-relaxed mb-8">
                 {chatbot.description ||
@@ -357,8 +357,8 @@ export default function PlaygroundPage({
         </div>
       </div>
 
-      <div className="border-t border-border bg-background/80 backdrop-blur-md p-4 sticky bottom-0 z-20">
-        <div className="max-w-3xl mx-auto relative">
+      <div className="border-t border-border bg-background/80 backdrop-blur-md p-6 sticky bottom-0 z-20">
+        <div className="max-w-5xl mx-auto relative">
           <div className="flex justify-between items-center">
             <textarea
               ref={textareaRef}

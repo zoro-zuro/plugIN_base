@@ -42,55 +42,55 @@ function MessageBubble({ message }: { message: Message }) {
       <div
         className={`flex max-w-[85%] md:max-w-[75%] gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
       >
-        {/* Avatar - pulsing during stream/shimmer */}
+        {/* Assistant Avatar - Atmospheric pulse during deployment */}
         <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ${
+          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300 ${
             isUser
-              ? "bg-muted text-foreground"
+              ? "bg-[#F7F4EF] border border-[#E2D9CC] text-[#8C7B68]"
               : message.isStreaming || showShimmer
-                ? "bg-primary/20 text-primary animate-pulse"
-                : "bg-primary/10 text-primary"
+                ? "bg-[#1A1714] text-[#EAB564] shadow-lg shadow-[#EAB564]/10 animate-pulse scale-110"
+                : "bg-[#1A1714] text-[#EAB564] shadow-sm"
           }`}
         >
           {isUser ? (
-            <div className="text-xs font-bold">
-              <FaUser className="text-md" />
-            </div>
+            <div className="text-[10px] font-black uppercase tracking-tighter">U</div>
           ) : (
-            <Zap size={14} className="fill-current" />
+            <div className="w-4 h-4 rounded-full bg-[#EAB564] flex items-center justify-center">
+              <div className="w-1.5 h-1.5 bg-[#1A1714] rounded-full" />
+            </div>
           )}
         </div>
 
         <div
           className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
         >
-          {/* Message Bubble */}
+          {/* High-Fidelity Message Bubble */}
           <div
-            className={`relative px-5 py-3.5 rounded-2xl shadow-sm text-sm leading-relaxed whitespace-pre-wrap transition-all duration-300 ease-out ${
+            className={`relative px-5 py-3.5 rounded-2xl shadow-sm text-sm leading-relaxed whitespace-pre-wrap transition-all duration-500 ease-out ${
               isUser
-                ? "bg-primary text-primary-foreground rounded-tr-sm"
-                : "bg-card border border-border text-foreground rounded-tl-sm overflow-hidden"
+                ? "bg-[#1A1714] text-[#F7F4EF] rounded-tr-sm"
+                : "bg-white border border-[#E2D9CC] text-[#1A1714] rounded-tl-sm overflow-hidden"
             }`}
           >
-            {/* Shimmer Effect - plays when streaming completes */}
+            {/* Intelligence Shimmer - Golden Sweep on Completion */}
             {showShimmer && !isUser && (
               <div
-                className="absolute inset-0 w-[200%] h-full pointer-events-none z-0"
+                className="absolute inset-0 w-[200%] h-full pointer-events-none z-[1]"
                 style={{
                   background:
-                    "linear-gradient(90deg, transparent 0%, rgba(124, 58, 237, 0.4) 20%, rgba(217, 70, 239, 0.5) 50%, rgba(124, 58, 237, 0.4) 80%, transparent 100%)",
-                  animation: "shimmerOnce 1.5s ease-out forwards",
+                    "linear-gradient(90deg, transparent 0%, rgba(234, 181, 100, 0.15) 30%, rgba(234, 181, 100, 0.4) 50%, rgba(234, 181, 100, 0.15) 70%, transparent 100%)",
+                  animation: "shimmerOnce 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards",
                   transform: "translateX(-100%)",
                   left: "-50%",
                 }}
               />
             )}
 
-            {/* Content with streaming cursor */}
-            <span className="relative z-10">
+            {/* Content Layer */}
+            <span className="relative z-10 block">
               {message.content}
               {message.isStreaming && message.content && (
-                <span className="inline-block w-0.5 h-4 bg-primary ml-1 animate-pulse" />
+                <span className="inline-block w-1 h-3.5 bg-[#EAB564] ml-1.5 align-middle rounded-[1px] animate-pulse" />
               )}
             </span>
           </div>

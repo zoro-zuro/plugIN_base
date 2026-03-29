@@ -35,7 +35,7 @@ export const createChatbot = mutation({
       // Initialize new fields with defaults
       systemPrompt: undefined,
       temperature: 0.5,
-      modelName: "llama-3.3-70b",
+      modelName: "llama-3.3-8b",
       maxTokens: 500,
       welcomeMessage: "Hi! How can I help you today?",
       errorMessage: "Sorry, something went wrong. Please try again.",
@@ -110,6 +110,9 @@ export const updateChatbot = mutation({
     errorMessage: v.optional(v.string()),
     responseLanguage: v.optional(v.string()),
     timezone: v.optional(v.string()),
+    // Security fields
+    allowedDomains: v.optional(v.array(v.string())),
+    isDomainWhitelistingEnabled: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
@@ -174,7 +177,7 @@ export const saveDocument = mutation({
     const documentId = await ctx.db.insert("documents", {
       ...args,
       uploadedAt: Date.now(),
-      status: "completed",
+      status: "processing",
     });
 
     // Find the associated chatbot
@@ -354,7 +357,19 @@ export const deleteAllNamespaceDocuments = mutation({
 export const updateChunkCount = mutation({
   args: { documentId: v.id("documents"), chunksCount: v.number() },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.documentId, { chunksCount: args.chunksCount });
+    await ctx.db.patch(args.documentId, { 
+      chunksCount: args.chunksCount,
+      status: "completed"
+    });
+  },
+});
+
+export const updateDocumentStatus = mutation({
+  args: { documentId: v.id("documents"), status: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.documentId, { 
+       status: args.status as any 
+    });
   },
 });
 

@@ -56,7 +56,7 @@ export const generateResponse = async (
   }
 
   try {
-    const modelName = "llama-3.3-70b";
+    const modelName = chatbot?.modelName || "llama3.1-8b";
     const temperature = chatbot?.temperature ?? 0.5;
     const maxTokens = chatbot?.maxTokens || 500;
     const greeting =
@@ -229,14 +229,14 @@ TOOL USAGE RULES:
         memory: evalMode
           ? undefined
           : [
-              ...chatHistory,
-              { role: "user", content: prompt },
-              {
-                role: "assistant",
-                content:
-                  "I couldn't retrieve specific details right now, but I'm here to help with general questions based on our conversation.",
-              },
-            ].slice(-10),
+            ...chatHistory,
+            { role: "user", content: prompt },
+            {
+              role: "assistant",
+              content:
+                "I couldn't retrieve specific details right now, but I'm here to help with general questions based on our conversation.",
+            },
+          ].slice(-10),
         contexts: [],
       };
     }

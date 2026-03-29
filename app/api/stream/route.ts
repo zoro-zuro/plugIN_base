@@ -49,6 +49,28 @@ export async function POST(req: Request) {
       );
     }
 
+    // ✅ DOMAIN WHITELISTING SECURITY CHECK
+    if (chatbot.isDomainWhitelistingEnabled && chatbot.allowedDomains?.length > 0) {
+       const referer = req.headers.get("referer");
+       const origin = req.headers.get("origin");
+       const currentHost = referer || origin || "";
+       
+       // Allow Localhost for development
+       if (!currentHost.includes("localhost") && !currentHost.includes("127.0.0.1")) {
+         const isAllowed = chatbot.allowedDomains.some((domain: string) => 
+            currentHost.toLowerCase().includes(domain.toLowerCase())
+         );
+
+         if (!isAllowed) {
+            console.warn(`🛑 Blocked unauthorized embed request from: ${currentHost}`);
+            return Response.json(
+              { error: "This domain is not authorized to use this chatbot." },
+              { status: 403, headers: corsHeaders }
+            );
+         }
+       }
+    }
+
     console.log(
       `📞 Embed Stream: "${message.substring(0, 20)}..." (${chatbot.chatbotId})`,
     );

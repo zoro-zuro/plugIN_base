@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { HfInference } from "@huggingface/inference";
+import { getCachedModel } from "@/lib/test_cache_model";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 
 export const runtime = "nodejs";
 
@@ -9,6 +11,7 @@ type EvalSampleScores = {
   keyword_recall: number;
   context_precision: number;
   context_recall: number;
+  faithfulness: number; // ✅ NEW: LLM-as-a-Judge
   latency_ms: number;
 };
 
@@ -18,10 +21,45 @@ type EvalResult = {
     keyword_recall: number;
     context_precision: number;
     context_recall: number;
+    faithfulness: number;
     latency_ms: number;
   };
   rows: EvalSampleScores[];
 };
+
+// Initialize LLM Judge
+const judgeModel = getCachedModel("llama3.1-8b", 0, 500);
+
+async function getFaithfulnessScore(answer: string, contexts: string[]): Promise<number> {
+  if (contexts.length === 0) return 0.5; // Neutral if no context retrieved
+  if (!answer || answer.startsWith("Error")) return 0;
+
+  const contextText = contexts.map((c, i) => `[Doc ${i+1}]: ${c}`).join("\n\n");
+  
+  const systemPrompt = `You are a strict QA evaluator. Your task is to determine if an AI's ANSWER is supported by the provided CONTEXT.
+- If the ANSWER contains facts NOT in the CONTEXT, it is a hallucination.
+- If the ANSWER contradicts the CONTEXT, it is unfaithful.
+- If the ANSWER is fully grounded in the CONTEXT, it is faithful.
+
+Respond ONLY with a single number between 0.0 and 1.0 representing the degree of faithfulness. 
+1.0 = Perfectly grounded.
+0.0 = Pure hallucination or contradiction.
+Do not provide any explanation, just the number.`;
+
+  const userPrompt = `CONTEXT:\n${contextText}\n\nANSWER: ${answer}`;
+
+  try {
+    const response = await judgeModel.invoke([
+       new SystemMessage(systemPrompt),
+       new HumanMessage(userPrompt)
+    ]);
+    const score = parseFloat(String(response.content).trim());
+    return isNaN(score) ? 0.5 : Math.max(0, Math.min(1, score));
+  } catch (err) {
+    console.error("Judge error:", err);
+    return 0.5;
+  }
+}
 
 const hf = new HfInference(process.env.HUGGINGFACE_API_KEY || "");
 
@@ -261,7 +299,7 @@ export async function POST(req: Request) {
 
     const allEmbeddings = await getBatchEmbeddings(allTexts);
 
-    const rows: EvalSampleScores[] = data.map((row, index) => {
+    const rows: EvalSampleScores[] = await Promise.all(data.map(async (row, index) => {
       const answerEmb = allEmbeddings[index * 2];
       const gtEmb = allEmbeddings[index * 2 + 1];
 
@@ -271,13 +309,16 @@ export async function POST(req: Request) {
 
       const answer = row.answer || "";
       const gt = row.ground_truth || "";
+      const contexts = Array.isArray(row.contexts) ? row.contexts : [];
 
       // ✅ Use Smart Scoring (checks containment first)
       const semanticScore = smartSemanticScore(answer, gt, embeddingScore);
 
       const kw = keywordPR(answer, gt);
-      const contexts = Array.isArray(row.contexts) ? row.contexts : [];
       const ctx = contextPR(contexts, gt, semanticScore);
+      
+      // ✅ Use LLM Judge for Faithfulness (Answer vs Contexts)
+      const faithfulness = await getFaithfulnessScore(answer, contexts);
 
       return {
         question: row.question,
@@ -285,9 +326,10 @@ export async function POST(req: Request) {
         keyword_recall: kw.recall,
         context_precision: ctx.precision,
         context_recall: ctx.recall,
+        faithfulness: faithfulness,
         latency_ms: row.latency_ms ?? 0,
       };
-    });
+    }));
 
     const n = rows.length;
     const avg = (f: (r: EvalSampleScores) => number) =>
@@ -298,6 +340,7 @@ export async function POST(req: Request) {
       keyword_recall: avg((r) => r.keyword_recall),
       context_precision: avg((r) => r.context_precision),
       context_recall: avg((r) => r.context_recall),
+      faithfulness: avg((r) => r.faithfulness),
       latency_ms: avg((r) => r.latency_ms),
     };
 

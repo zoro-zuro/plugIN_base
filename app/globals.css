@@ -30,69 +30,85 @@
   --animate-slide-up: slideUp 0.5s ease-out;
   --animate-float: float 3s ease-in-out infinite;
   --animate-glow: glow 2s ease-in-out infinite alternate;
-  --animate-shimmer: shimmer 2s infinite; /* ✅ Add this */
+  --animate-shimmer: shimmer 2s infinite;
+  --animate-cell-ripple: cell-ripple linear;
 }
 
-/* Root colors - THEME: Purple/Violet SaaS */
+@keyframes cell-ripple {
+  0% {
+    opacity: 0.4;
+    background-color: transparent;
+  }
+  50% {
+    opacity: 1;
+    background-color: rgba(65, 59, 52, 0.4);
+  }
+  100% {
+    opacity: 0.4;
+    background-color: transparent;
+  }
+}
+
+/* Root colors - THEME: Parchment & Ink Editorial */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    --background: 40 28% 95%; /* #F7F4EF (Warm Parchment) */
+    --foreground: 20 15% 9%; /* #1A1714 (Deep Ink) */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card: 40 20% 93%; /* Slightly deeper parchment */
+    --card-foreground: 20 15% 9%;
 
-    --primary: 262 83% 58%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 35 75% 68%; /* #EAB564 (Gold Accent) */
+    --primary-foreground: 20 15% 9%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 35 15% 88%; /* Muted Linen #F0EAE0 */
+    --secondary-foreground: 20 15% 9%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 35 10% 90%;
+    --muted-foreground: 35 15% 35%; /* #5C5448 Smoke */
 
-    --accent: 262 83% 96%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 35 75% 68%;
+    --accent-foreground: 20 15% 9%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --border: 35 15% 85%; /* #E2D9CC Cream Border */
+    --input: 35 15% 85%;
 
-    --ring: 262 83% 58%;
-    --radius: 0.75rem;
+    --ring: 35 75% 68%;
+    --radius: 1rem; /* #24px rounded-3xl approx */
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
+    --background: 20 15% 9%; /* #1A1714 Ink Base */
+    --foreground: 40 28% 95%; /* Parchment Text */
 
-    --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
+    --card: 20 15% 12%; /* Dark Floor #111009 approx */
+    --card-foreground: 40 28% 95%;
 
-    --primary: 263 70% 50%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 35 75% 68%; /* Gold #EAB564 */
+    --primary-foreground: 20 15% 9%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 40 10% 15%; /* Abyss #0A0908 */
+    --secondary-foreground: 40 28% 95%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 20 10% 15%;
+    --muted-foreground: 40 15% 65%; /* Warm Tan / Ash */
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 35 75% 68%;
+    --accent-foreground: 20 15% 9%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62% 40%;
+    --destructive-foreground: 40 28% 95%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 263 70% 50%;
+    --border: 20 15% 20%;
+    --input: 20 15% 20%;
+    --ring: 35 75% 68%;
   }
 }
 
-/* Base styles */
+/* Base styles with Serif first focus */
 @layer base {
   * {
     border-color: var(--color-border);
@@ -100,8 +116,13 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family: var(--font-sans);
+    font-family: var(--font-sans); /* React logic often defaults here */
     -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 900;
+    letter-spacing: -0.02em;
   }
 }
 

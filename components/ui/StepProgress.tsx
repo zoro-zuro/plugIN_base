@@ -74,8 +74,6 @@ export function StepProgress({
             icon: <Brain size={16} />,
           };
 
-          console.log(`  ➡️ Rendering step: ${stepKey} (${status})`);
-
           return (
             <div key={stepKey} className="flex items-center gap-2.5">
               {/* Status Icon */}

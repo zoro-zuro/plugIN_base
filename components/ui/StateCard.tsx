@@ -21,16 +21,24 @@ function StatCard({
   };
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-      <div
-        className={`inline-flex p-3 rounded-xl ring-1 ${variants[variant]} mb-4`}
-      >
-        <Icon className="text-xl" />
+    <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group">
+      {/* Dark Header Ledger */}
+      <div className="bg-[#1A1714] px-4 py-2 opacity-95">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[#EAB564]">
+          {label}
+        </p>
       </div>
-      <p className="text-sm font-medium text-muted-foreground mb-1">{label}</p>
-      <p className="text-3xl font-bold text-foreground tracking-tight">
-        {value.toLocaleString()}
-      </p>
+
+      {/* Metrics Row */}
+      <div className="p-4 flex items-center justify-between">
+        <div className={`shrink-0 p-2 rounded-lg ${variants[variant]}`}>
+          <Icon className="text-xl" />
+        </div>
+        
+        <p className="text-2xl font-bold text-foreground tracking-tight">
+          {value.toLocaleString()}
+        </p>
+      </div>
     </div>
   );
 }

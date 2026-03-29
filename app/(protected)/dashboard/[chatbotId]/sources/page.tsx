@@ -10,6 +10,7 @@ import { deletePineconeVectors, resetVectors } from "@/app/actions/delFile";
 import { RiResetLeftLine } from "react-icons/ri";
 import UploadModal from "@/components/ui/UploadModal";
 import FileCard from "@/components/ui/FileCard";
+import CrawlUrlCard from "@/components/ui/CrawlUrlCard";
 
 // --- MAIN PAGE ---
 export default function SourcesPage({
@@ -122,6 +123,9 @@ export default function SourcesPage({
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 md:p-8 animate-fade-in">
         <div className="max-w-5xl mx-auto space-y-6 md:space-y-8">
+          {/* ACTION: Crawl URL */}
+          <CrawlUrlCard namespace={chatbot.namespace} />
+
           {/* Files List Header */}
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold text-foreground flex items-center justify-center gap-4">

@@ -37,23 +37,21 @@ type DatasetRow = {
 };
 
 type CustomOverall = {
-  // exact_match: number;
   semantic_similarity: number;
-  // keyword_precision: number;
   keyword_recall: number;
   context_precision: number;
   context_recall: number;
+  faithfulness: number;
   latency_ms: number;
 };
 
 type CustomRow = {
   question: string;
-  exact_match: number;
   semantic_similarity: number;
-  keyword_precision: number;
   keyword_recall: number;
   context_precision: number;
   context_recall: number;
+  faithfulness: number;
   latency_ms: number;
 };
 
@@ -387,7 +385,12 @@ export default function EvalPage({
                     }
                     icon={<FiDatabase />}
                   />
-                  <div className="col-span-2 md:col-span-1 rounded-xl bg-card/50 border border-border p-4 flex flex-col justify-between">
+                  <MetricCard
+                    title="Faithfulness"
+                    score={evalResult.overall.faithfulness * 100}
+                    icon={<FiCheckCircle />}
+                  />
+                  <div className="rounded-xl bg-card/50 border border-border p-4 flex flex-col justify-between">
                     <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                       <FiClock /> Latency
                     </div>
@@ -420,9 +423,15 @@ export default function EvalPage({
                           </h4>
                         </div>
                         {evalResult?.rows[idx] && (
-                          <ScoreBadge
-                            score={calculateTestScore(evalResult.rows[idx])}
-                          />
+                          <div className="flex flex-col items-end gap-2">
+                             <ScoreBadge
+                              score={calculateTestScore(evalResult.rows[idx])}
+                             />
+                             <div className="flex gap-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                               <span className="flex items-center gap-1"><FiCpu className="text-blue-500"/> SIM: {(evalResult.rows[idx].semantic_similarity * 100).toFixed(0)}%</span>
+                               <span className="flex items-center gap-1"><FiCheckCircle className="text-emerald-500"/> FAITH: {(evalResult.rows[idx].faithfulness * 100).toFixed(0)}%</span>
+                             </div>
+                          </div>
                         )}
                       </div>
 
