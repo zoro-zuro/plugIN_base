@@ -16,6 +16,10 @@ export const createChatbot = mutation({
     description: v.optional(v.string()),
     websiteUrl: v.optional(v.string()),
   },
+  handler: async (ctx, args) => {
+    const chatbotId = generateChatbotId();
+    const namespace = `${args.userId}_${chatbotId}`;
+
     // Create initial allowed domain if website URL is provided
     let allowedDomains: string[] = [];
     if (args.websiteUrl) {
