@@ -38,8 +38,7 @@ const WorldGlobe = memo(function WorldGlobe({
     }
 
     const animate = () => {
-      // PERFORMANCE GUARD: Only rotate if window is focused
-      if (!isDragging.current && document.hasFocus()) {
+      if (!isDragging.current) {
         rotationRef.current = [
           rotationRef.current[0] + 0.2, // Decelerated for main-thread stability
           rotationRef.current[1],
@@ -54,7 +53,7 @@ const WorldGlobe = memo(function WorldGlobe({
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [isLive]);
+  }, [isLive, mounted]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     isDragging.current = true;

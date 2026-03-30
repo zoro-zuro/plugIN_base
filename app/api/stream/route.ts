@@ -14,7 +14,11 @@ const corsHeaders = {
 
 export async function POST(req: Request) {
   try {
-    const { message, history, chatbot, warmup, sessionId } = await req.json();
+    const text = await req.text();
+    if (!text) {
+      return Response.json({ error: "Empty request body" }, { status: 400, headers: corsHeaders });
+    }
+    const { message, history, chatbot, warmup, sessionId } = JSON.parse(text);
 
     if (warmup === true) {
       if (chatbot && chatbot.namespace) {
@@ -53,10 +57,15 @@ export async function POST(req: Request) {
     if (chatbot.isDomainWhitelistingEnabled && chatbot.allowedDomains?.length > 0) {
        const referer = req.headers.get("referer");
        const origin = req.headers.get("origin");
-       const currentHost = referer || origin || "";
+       const currentHost = (referer || origin || "").toLowerCase();
        
-       // Allow Localhost for development
-       if (!currentHost.includes("localhost") && !currentHost.includes("127.0.0.1")) {
+       // ⚡️ INTERNAL BYPASS: Always allow localhost, 127.0.0.1, and our OWN domain (plug-in-base.vercel.app)
+       const isInternal = 
+          currentHost.includes("localhost") || 
+          currentHost.includes("127.0.0.1") || 
+          currentHost.includes("plug-in-base.vercel.app"); // Official Production Domain
+
+       if (!isInternal) {
          const isAllowed = chatbot.allowedDomains.some((domain: string) => 
             currentHost.toLowerCase().includes(domain.toLowerCase())
          );

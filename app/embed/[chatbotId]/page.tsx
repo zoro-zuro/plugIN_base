@@ -67,6 +67,30 @@ export default function EmbedChatWidget({
     // Enforcement Logic
     try {
       const parentUrl = document.referrer;
+      const currentOrigin = window.location.origin;
+
+      // ⚡️ INTERNAL BYPASS: Always authorize if we are on our own domain (plug-in-base.vercel.app)
+      const isInternalSite = 
+          currentOrigin.includes("localhost") || 
+          currentOrigin.includes("127.0.0.1") || 
+          currentOrigin.includes("plug-in-base.vercel.app");
+
+      // Case 1: In an iframe where parent is us (Dashboard/Playground)
+      if (parentUrl) {
+         try {
+            const parentOrigin = new URL(parentUrl).origin;
+            if (parentOrigin === currentOrigin || parentOrigin.includes("plug-in-base.vercel.app")) {
+               setAuthStatus("authorized");
+               return;
+            }
+         } catch { /* Silent fail */ }
+      } else if (isInternalSite) {
+          // Direct hit to our site (not in an iframe)
+          setAuthStatus("authorized");
+          return;
+      }
+
+      // If no parent URL and we're strictly enforced, it's unauthorized
       if (!parentUrl) {
         setAuthStatus("unauthorized");
         return;
@@ -143,13 +167,22 @@ export default function EmbedChatWidget({
         ];
 
         try {
-          // Optimization: Race the APIs to get the fastest response
+          // ✅ Optimization: Race the APIs to get the fastest valid response
           const fastestData = await Promise.any(
             apis.map(url => 
               fetch(url, { signal: AbortSignal.timeout(3000) })
-                .then(res => {
+                .then(async res => {
                   if (!res.ok) throw new Error();
-                  return res.json();
+                  const text = await res.text();
+                  if (!text || text.trim().length === 0) throw new Error("Empty body");
+                  const data = JSON.parse(text);
+                  
+                  // ⚡️ SILENT FAILURE CHECK: Some APIs (like ip-api) return 200 with a "fail" status JSON
+                  if (data && (data.status === "fail" || data.error === true)) {
+                    throw new Error("API Limit or SSL Error");
+                  }
+                  
+                  return data;
                 })
             )
           );
@@ -296,12 +329,21 @@ export default function EmbedChatWidget({
       };
 
       // 3. Read Stream
+      let leftover = "";
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        const parts = chunk.split(/(__PROGRESS__.*?__END__\n)/);
+        const allContent = leftover + chunk;
+        const parts = allContent.split(/(__PROGRESS__.*?__END__\n)/);
+        
+        // Only buffer if the last part looks like an incomplete signal
+        if (parts[parts.length - 1].includes("__PROGRESS__")) {
+          leftover = parts.pop() || "";
+        } else {
+          leftover = "";
+        }
 
         for (const part of parts) {
           if (!part) continue;
@@ -317,7 +359,7 @@ export default function EmbedChatWidget({
                   [data.step]: data.status,
                 }));
               } catch (e) {
-                console.error(e);
+                console.error("Signal parse fail:", e);
               }
             }
             continue;
@@ -345,6 +387,16 @@ export default function EmbedChatWidget({
             scheduleRafUpdate();
           }
         }
+      }
+
+      // Handle any leftover text after the stream ends
+      if (leftover && !leftover.includes("__PROGRESS__")) {
+        streamTextRef.current += leftover;
+        flushSync(() => {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === streamId ? { ...m, content: streamTextRef.current } : m)),
+          );
+        });
       }
 
       // 4. Finalize

@@ -144,12 +144,21 @@ export default function PlaygroundPage({
         });
       };
 
+      let leftover = "";
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        const parts = chunk.split(/(__PROGRESS__.*?__END__\n)/);
+        const allContent = leftover + chunk;
+        const parts = allContent.split(/(__PROGRESS__.*?__END__\n)/);
+        
+        // Only buffer if the last part looks like an incomplete signal
+        if (parts[parts.length - 1].includes("__PROGRESS__")) {
+          leftover = parts.pop() || "";
+        } else {
+          leftover = "";
+        }
 
         for (const part of parts) {
           if (!part) continue;
@@ -205,6 +214,11 @@ export default function PlaygroundPage({
             scheduleRafUpdate();
           }
         }
+      }
+      
+      // Flush any final text bits that weren't part of a signal
+      if (leftover && !leftover.includes("__PROGRESS__")) {
+        streamTextRef.current += leftover;
       }
 
       // Ensure final content is painted

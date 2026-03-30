@@ -222,7 +222,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-[#F7F4EF] text-[#1A1714]">
       {/* 01 — HERO SECTION */}
-      <section className="relative px-6 py-24 lg:py-32 overflow-hidden bg-[#F7F4EF]">
+      <section className="relative px-12 py-24 lg:py-32 overflow-hidden bg-[#F7F4EF]">
         <div className="absolute inset-0 z-0">
           <BackgroundRippleEffect rows={14} cellSize={56} />
         </div>
@@ -231,19 +231,18 @@ export default function Home() {
 
         <div className="relative z-10 mx-auto max-w-7xl pointer-events-none">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
-            <div className="text-left flex flex-col items-start pointer-events-auto">
+            <div className="text-left flex flex-col items-start pointer-events-none">
+                <div className="pointer-events-auto w-full">
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 className="flex items-center gap-3 mb-8"
               >
-                <div className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#EAB564] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#EAB564]"></span>
-                </div>
-                <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#9B7B4E]">
+                <div className="w-8 h-px bg-[#EAB564]" />
+                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-[#9B7B4E]">
                   Docs in. Chatbot out.
                 </span>
+                <div className="w-16 h-px bg-[#EAB564]" />
               </motion.div>
 
               <motion.h1
@@ -251,11 +250,13 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
                 style={{ fontFamily: 'Georgia, serif' }}
-                className="text-5xl sm:text-6xl lg:text-7xl font-black text-[#1A1714] leading-[1.05] tracking-tight mb-8"
+                className="text-4xl sm:text-5xl lg:text-5xl font-black text-[#1A1714] leading-[1.1] tracking-tight mb-8"
               >
-                Train a chatbot <br /> on your files. <br />
+                Train a chatbot <br /> 
+                on your files. <br />
+                Then plug it into <br />
                 <span className="relative inline-block text-[#EAB564]">
-                  Then plug it into your website.
+                  your website.
                   <svg className="absolute -bottom-2 left-0 w-full h-3 text-[#EAB564]/40" viewBox="0 0 300 20" fill="none" preserveAspectRatio="none">
                     <path d="M5 15C50 5 150 5 295 15" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
                   </svg>
@@ -289,14 +290,15 @@ export default function Home() {
                 </Link>
               </motion.div>
             </div>
+          </div>
 
-            <motion.div
+          <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.3, duration: 1 }}
-              className="relative hidden lg:block pointer-events-auto"
+              className="relative hidden lg:block pointer-events-none"
             >
-              <div className="relative rounded-[2.5rem] border border-[#E2D9CC] bg-[#FFFFFF]/80 backdrop-blur-3xl p-3 shadow-[0_32px_80px_rgba(26,23,20,0.14)]">
+              <div className="relative rounded-[2.5rem] border border-[#E2D9CC] bg-[#FFFFFF]/80 backdrop-blur-3xl p-3 shadow-[0_32px_80px_rgba(26,23,20,0.14)] pointer-events-auto">
                 <div className="absolute top-0 left-0 right-0 h-14 bg-[#F7F4EF] rounded-t-[2.25rem] border-b border-[#E2D9CC] flex items-center px-6 gap-2">
                   <div className="flex gap-2">
                     <div className="w-3.5 h-3.5 rounded-full bg-[#E2D9CC]/50" />
@@ -322,9 +324,9 @@ export default function Home() {
       </section>
 
       {/* 02 — DARK METRICS SECTION (Reordered) */}
-      <section className="py-20 bg-[#1A1714] border-y border-[#EAB564]/10 relative overflow-hidden">
+      <section className="py-12 bg-[#1A1714] border-y border-[#EAB564]/10 relative overflow-hidden">
         <div className="absolute top-0 right-0 h-64 w-64 bg-[#EAB564]/5 blur-[100px]" />
-        <div className="mx-auto max-w-7xl px-6 relative z-10">
+        <div className="mx-auto max-w-7xl px-12 relative z-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
             {[
               { label: "Average Latency", component: <Counter value={1.2} startValue={8.5} decimals={1} prefix="< " suffix="s" /> },
@@ -333,10 +335,10 @@ export default function Home() {
               { label: "Server Management", component: <Counter value={0} startValue={12} /> }
             ].map((stat, i) => (
               <FadeInWhenVisible key={stat.label} className="flex flex-col gap-2">
-                <div style={{ fontFamily: 'Georgia, serif' }} className="text-4xl md:text-5xl font-black text-[#F7F4EF]">
+                <div style={{ fontFamily: 'Georgia, serif' }} className="text-3xl md:text-4xl font-black text-[#F7F4EF]">
                   {stat.component}
                 </div>
-                <div className="text-xs font-bold uppercase tracking-[0.2em] text-[#EAB564]">
+                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#EAB564]">
                   {stat.label}
                 </div>
               </FadeInWhenVisible>
@@ -347,7 +349,7 @@ export default function Home() {
 
       {/* 03 — CAPABILITIES BENTO GRID (Stay Light) */}
       <section id="features" className="py-24 lg:py-28 bg-[#F7F4EF] border-b border-[#E2D9CC]/30">
-        <div className="mx-auto max-w-7xl px-6">
+        <div className="mx-auto max-w-7xl px-12">
           <SectionHeading
             label="Capabilities"
             title="Everything you need to build powerful AI chatbots"
@@ -363,7 +365,7 @@ export default function Home() {
 
       {/* 04 — PROCESS SECTION (Stay Dark) */}
       <section id="how-it-works" className="py-20 lg:py-24 bg-[#1A1714] relative">
-        <div className="mx-auto max-w-7xl px-6">
+        <div className="mx-auto max-w-7xl px-12">
           <div className="flex flex-col lg:flex-row gap-16 lg:gap-24 items-start">
             {/* Sticky Label/Title */}
             <div className="lg:sticky lg:top-32 lg:w-1/3 text-left">
@@ -477,7 +479,7 @@ export default function Home() {
 
       {/* 08 — FOOTER */}
       <footer className="bg-[#0A0908] pt-24 pb-12 border-t border-[#EAB564]/5">
-        <div className="mx-auto max-w-7xl px-6 flex flex-col md:flex-row justify-between items-start gap-12">
+        <div className="mx-auto max-w-7xl px-12 flex flex-col md:flex-row justify-between items-start gap-12">
           <div className="flex flex-col gap-6">
             <div className="flex items-center gap-3">
               <Logo className="h-10 w-10 opacity-80" />
@@ -515,7 +517,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="mx-auto max-w-7xl px-6 mt-24 pt-8 border-t border-[#EAB564]/5 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="mx-auto max-w-7xl px-12 mt-24 pt-8 border-t border-[#EAB564]/5 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-xs text-[#5C5448]"> © 2026 PluginBase AI. All rights reserved. </p>
           <p className="text-xs text-[#5C5448]"> 
             Made with ♥️ by <a href="https://sheik-portfolio-taupe.vercel.app/" target="_blank" rel="noopener noreferrer" className="hover:text-[#EAB564] transition-colors font-bold">Shiek</a>. 
