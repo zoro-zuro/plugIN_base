@@ -5,6 +5,7 @@ import { getPineconeVectorStore } from "@/lib/vectorStore";
 import { preprocessDocument } from "@/lib/preprocessing";
 import { api } from "@/convex/_generated/api";
 import { fetchMutation } from "convex/nextjs";
+import { callConvexMutation } from "@/lib/convex-http";
 import { Id } from "@/convex/_generated/dataModel";
 
 // Helper function to process Pinecone in background
@@ -45,9 +46,10 @@ async function processVectorsInBackground(
     const vectorStore = await getPineconeVectorStore(namespace);
     await vectorStore.addDocuments(documentsWithId);
 
-    // 4. ✅ Update the Chunk Count in Convex (so UI shows correct count later)
-    await fetchMutation(api.documents.updateChunkCount, {
-      // Make sure you created this mutation!
+    // 4. Update Chunk Count in Convex — use direct HTTP call, NOT fetchMutation.
+    // fetchMutation requires the original Clerk session context which is gone
+    // in a fire & forget background function on Vercel. This is why chunks stayed at 0.
+    await callConvexMutation("documents:updateChunkCount", {
       documentId,
       chunksCount: documents.length,
     });
@@ -57,7 +59,7 @@ async function processVectorsInBackground(
   } catch (error) {
     console.error("❌ [Background] Vector processing failed:", error);
     // ✅ Mark as failed in Convex
-    await fetchMutation(api.documents.updateDocumentStatus, {
+    await callConvexMutation("documents:updateDocumentStatus", {
       documentId,
       status: "failed",
     });

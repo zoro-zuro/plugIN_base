@@ -6,6 +6,7 @@ import { fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { preprocessDocument } from "@/lib/preprocessing";
 import { getPineconeVectorStore } from "@/lib/vectorStore";
+import { callConvexMutation } from "@/lib/convex-http";
 import { Id } from "@/convex/_generated/dataModel";
 
 async function processUrlInBackground(
@@ -48,8 +49,11 @@ async function processUrlInBackground(
     const vectorStore = await getPineconeVectorStore(namespace);
     await vectorStore.addDocuments(documentsWithId);
 
-    // 4. Update Convex
-    await fetchMutation(api.documents.updateChunkCount, {
+    // 4. Update Convex — use direct HTTP call, NOT fetchMutation.
+    // fetchMutation requires the original Clerk session context which is gone
+    // in a fire & forget background function on Vercel. This raw HTTP call works
+    // because updateChunkCount has no auth guard.
+    await callConvexMutation("documents:updateChunkCount", {
       documentId,
       chunksCount: documents.length,
     });
@@ -57,10 +61,9 @@ async function processUrlInBackground(
     console.timeEnd("URL Processing");
   } catch (err) {
     console.warn("❌ Crawler Processing Error:", err);
-    // Mark as failed in Convex
-    await fetchMutation(api.documents.updateDocumentStatus, {
-       documentId,
-       status: "failed",
+    await callConvexMutation("documents:updateDocumentStatus", {
+      documentId,
+      status: "failed",
     });
   }
 }
@@ -79,9 +82,9 @@ export const crawlAndTrainUrl = async (
         "User-Agent": "Mozilla/5.0 (compatible; PluginBaseBot/1.0; +https://pluginbase.ai)",
       },
     });
-    
+
     if (!response.ok) throw new Error(`Could not reach site: ${response.statusText}`);
-    
+
     const html = await response.text();
     const $ = cheerio.load(html);
 
@@ -90,7 +93,7 @@ export const crawlAndTrainUrl = async (
 
     // Get main content (prioritize <main> or <article>)
     let mainContent = $("main, article").text();
-    
+
     if (!mainContent || mainContent.length < 200) {
       // Fallback to body if no main section found
       mainContent = $("body").text();
