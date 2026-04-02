@@ -6,7 +6,7 @@ import { fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { preprocessDocument } from "@/lib/preprocessing";
 import { getPineconeVectorStore } from "@/lib/vectorStore";
-import { callConvexMutation } from "@/lib/convex-http";
+import { convexClient } from "@/lib/convex-http";
 import { Id } from "@/convex/_generated/dataModel";
 
 async function processUrlInBackground(
@@ -49,11 +49,10 @@ async function processUrlInBackground(
     const vectorStore = await getPineconeVectorStore(namespace);
     await vectorStore.addDocuments(documentsWithId);
 
-    // 4. Update Convex — use direct HTTP call, NOT fetchMutation.
-    // fetchMutation requires the original Clerk session context which is gone
-    // in a fire & forget background function on Vercel. This raw HTTP call works
-    // because updateChunkCount has no auth guard.
-    await callConvexMutation("documents:updateChunkCount", {
+    // 4. Update Chunk Count in Convex via ConvexHttpClient (not fetchMutation).
+    // ConvexHttpClient works without a session context, AND triggers realtime useQuery
+    // subscriptions so the browser UI updates live without a page refresh.
+    await convexClient.mutation(api.documents.updateChunkCount, {
       documentId,
       chunksCount: documents.length,
     });
@@ -61,7 +60,7 @@ async function processUrlInBackground(
     console.timeEnd("URL Processing");
   } catch (err) {
     console.warn("❌ Crawler Processing Error:", err);
-    await callConvexMutation("documents:updateDocumentStatus", {
+    await convexClient.mutation(api.documents.updateDocumentStatus, {
       documentId,
       status: "failed",
     });

@@ -1,31 +1,18 @@
+import { ConvexHttpClient } from "convex/browser";
+
 /**
- * Calls a Convex mutation directly via HTTP API without requiring an auth context.
- * This is the correct pattern for background processing (fire & forget) on Vercel
- * where the original request context (auth session) is no longer available.
+ * Calls a Convex mutation from a server-side background context (no auth required).
+ *
+ * WHY THIS INSTEAD OF fetchMutation:
+ * - fetchMutation from 'convex/nextjs' requires the original Clerk session/request context.
+ * - In fire & forget background functions on Vercel, that request context is gone.
+ * - ConvexHttpClient works without auth and crucially goes through the Convex protocol,
+ *   so realtime useQuery subscriptions on the client WILL receive the update live.
+ *
+ * WHY NOT raw fetch('/api/mutation'):
+ * - The raw HTTP approach bypasses Convex's realtime notification system,
+ *   so the UI only updates on a manual page refresh.
  */
-export async function callConvexMutation(
-  functionPath: string,
-  args: Record<string, unknown>
-): Promise<void> {
-  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-  if (!convexUrl) {
-    throw new Error("NEXT_PUBLIC_CONVEX_URL is not set");
-  }
+const convexClient = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
-  const response = await fetch(`${convexUrl}/api/mutation`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      path: functionPath,
-      args,
-      format: "json",
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Convex mutation failed [${response.status}]: ${text}`);
-  }
-}
+export { convexClient };
