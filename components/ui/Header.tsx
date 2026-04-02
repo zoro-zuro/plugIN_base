@@ -22,16 +22,7 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const [isAtTop, setIsAtTop] = useState(true);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsAtTop(window.scrollY <= 10);
-    };
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  // Removed unused scroll listener here as it was redundant with Navbar component
 
   const shouldHideHeader =
     pathname?.startsWith("/dashboard") ||
@@ -39,8 +30,8 @@ export function Header() {
     pathname?.startsWith("/embed/");
 
   const publicNavItems = [
-    { name: "Features", link: "#features" },
-    { name: "How it Works", link: "#how-it-works" },
+    { name: "Features", link: "/#features" },
+    { name: "How it Works", link: "/#how-it-works" },
   ];
 
   const authenticatedNavItems = [
@@ -49,15 +40,34 @@ export function Header() {
   ];
 
   const navItems = isSignedIn ? authenticatedNavItems : publicNavItems;
+  
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith("/#")) {
+      e.preventDefault();
+      const id = href.replace("/#", "");
+      
+      // Update URL without full page reload
+      window.history.pushState({}, "", href);
+      
+      // Immediate scroll check
+      const element = document.getElementById(id);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      } else {
+        // If we're not on the home page, redirect
+        router.push(href);
+      }
+      
+      if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+    }
+  };
 
   if (shouldHideHeader) {
     return null;
   }
 
   return (
-    <div
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500`}
-    >
+    <div className="fixed top-0 left-0 right-0 z-50">
       <Navbar>
         <NavBody>
           <button
@@ -77,6 +87,7 @@ export function Header() {
                 <Link
                   key={item.name}
                   href={item.link}
+                  onClick={(e) => handleNavClick(e, item.link)}
                   className="text-xs font-bold uppercase tracking-[0.2em] text-[#8C7B68] hover:text-[#EAB564] transition-colors"
                 >
                   {item.name}
@@ -125,7 +136,7 @@ export function Header() {
               <Link
                 key={`mobile-link-${idx}`}
                 href={item.link}
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={(e) => handleNavClick(e, item.link)}
                 className="block w-full py-3 px-4 text-base font-medium text-foreground hover:bg-accent rounded-lg transition-colors"
               >
                 {item.name}

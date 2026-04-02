@@ -264,6 +264,12 @@
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+  overflow-anchor: none;
+}
+
+section {
+  overflow-anchor: none;
 }
 
 @layer utilities {

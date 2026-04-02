@@ -48,11 +48,7 @@ interface MobileNavMenuProps {
 }
 
 export const Navbar = ({ children, className }: NavbarProps) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollY } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"],
-  });
+  const { scrollY } = useScroll(); // Use global scroll, not relative to sticky ref
   const [visible, setVisible] = useState<boolean>(false);
 
   useMotionValueEvent(scrollY, "change", (latest) => {
@@ -61,7 +57,6 @@ export const Navbar = ({ children, className }: NavbarProps) => {
 
   return (
     <motion.div
-      ref={ref}
       className={cn("sticky inset-x-0 top-0 z-40 w-full", className)}
     >
       {React.Children.map(children, (child) =>
@@ -124,7 +119,7 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
           {hovered === idx && (
             <motion.div
               layoutId="hovered"
-              className="absolute inset-0 h-full w-full rounded-full bg-accent/50 dark:bg-accent/30"
+              className="absolute inset-0 h-full w-full rounded-full bg-accent/50 dark:bg-accent/30 pointer-events-none"
             />
           )}
           <span className="relative z-20">{item.name}</span>

@@ -212,6 +212,21 @@ export default function Home() {
   const [step, setStep] = useState(0);
   const steps = ["upload", "processing", "ready"];
 
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith("/#")) {
+      e.preventDefault();
+      const id = href.replace("/#", "");
+      
+      // Update URL hash instantly
+      window.history.pushState({}, "", href);
+      
+      const element = document.getElementById(id);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  };
+
   useEffect(() => {
     const sequence = setInterval(() => {
       setStep((prev) => (prev + 1) % steps.length);
@@ -283,7 +298,10 @@ export default function Home() {
                     Build your Chatbot
                   </MagneticButton>
                 </Link>
-                <Link href="#features">
+                <Link 
+                  href="/#features"
+                  onClick={(e) => handleNavClick(e, "/#features")}
+                >
                   <MagneticButton variant="ghost">
                     See how it works
                   </MagneticButton>
@@ -348,7 +366,7 @@ export default function Home() {
       </section>
 
       {/* 03 — CAPABILITIES BENTO GRID (Stay Light) */}
-      <section id="features" className="py-24 lg:py-28 bg-[#F7F4EF] border-b border-[#E2D9CC]/30">
+      <section id="features" className="scroll-mt-32 py-24 lg:py-28 bg-[#F7F4EF] border-b border-[#E2D9CC]/30">
         <div className="mx-auto max-w-7xl px-12">
           <SectionHeading
             label="Capabilities"
@@ -364,7 +382,7 @@ export default function Home() {
       </section>
 
       {/* 04 — PROCESS SECTION (Stay Dark) */}
-      <section id="how-it-works" className="py-20 lg:py-24 bg-[#1A1714] relative">
+      <section id="how-it-works" className="scroll-mt-32 py-20 lg:py-24 bg-[#1A1714] relative">
         <div className="mx-auto max-w-7xl px-12">
           <div className="flex flex-col lg:flex-row gap-16 lg:gap-24 items-start">
             {/* Sticky Label/Title */}
@@ -494,8 +512,20 @@ export default function Home() {
             <div className="flex flex-col gap-6 text-sm">
               <h4 className="text-[#F7F4EF] font-bold uppercase tracking-widest text-xs">Platform</h4>
               <div className="flex flex-col gap-4">
-                <Link href="#features" className="text-[#8C7B68] hover:text-[#EAB564] transition-colors">Capabilities</Link>
-                <Link href="#how-it-works" className="text-[#8C7B68] hover:text-[#EAB564] transition-colors">The Protocol</Link>
+                <Link 
+                  href="/#features" 
+                  onClick={(e) => handleNavClick(e, "/#features")}
+                  className="text-[#8C7B68] hover:text-[#EAB564] transition-colors"
+                >
+                  Capabilities
+                </Link>
+                <Link 
+                  href="/#how-it-works" 
+                  onClick={(e) => handleNavClick(e, "/#how-it-works")}
+                  className="text-[#8C7B68] hover:text-[#EAB564] transition-colors"
+                >
+                  The Protocol
+                </Link>
                 <Link href="/chatbot/create" className="text-[#8C7B68] hover:text-[#EAB564] transition-colors">Create Chatbot</Link>
                 <Link href="/chatbot/manage" className="text-[#8C7B68] hover:text-[#EAB564] transition-colors">Dashboard</Link>
               </div>
