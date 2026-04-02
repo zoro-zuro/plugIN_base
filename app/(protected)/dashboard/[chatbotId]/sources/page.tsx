@@ -6,7 +6,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import toast, { Toaster } from "react-hot-toast";
 import { Id } from "@/convex/_generated/dataModel";
-import { deletePineconeVectors } from "@/app/actions/delFile";
+import { deletePineconeVectors, resetVectors } from "@/app/actions/delFile";
 import { RiResetLeftLine } from "react-icons/ri";
 import UploadModal from "@/components/ui/UploadModal";
 import FileCard from "@/components/ui/FileCard";
@@ -30,7 +30,7 @@ export default function SourcesPage({
   );
 
   const deleteDoc = useMutation(api.documents.deleteDocument);
-  const resetVectors = useMutation(api.vectors.resetNamespaceVectors);
+
   const deleteAllNamespaceDocuments = useMutation(
     api.documents.deleteAllNamespaceDocuments,
   );
