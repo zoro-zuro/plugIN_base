@@ -6,11 +6,12 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import toast, { Toaster } from "react-hot-toast";
 import { Id } from "@/convex/_generated/dataModel";
-import { deletePineconeVectors, resetVectors } from "@/app/actions/delFile";
+import { deletePineconeVectors } from "@/app/actions/delFile";
 import { RiResetLeftLine } from "react-icons/ri";
 import UploadModal from "@/components/ui/UploadModal";
 import FileCard from "@/components/ui/FileCard";
 import CrawlUrlCard from "@/components/ui/CrawlUrlCard";
+import { AlertModal } from "@/components/ui/AlertModal";
 
 // --- MAIN PAGE ---
 export default function SourcesPage({
@@ -21,6 +22,7 @@ export default function SourcesPage({
   const { chatbotId } = use(params);
   const chatbot = useQuery(api.documents.getChatbotById, { chatbotId });
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [resetModalOpen, setResetModalOpen] = useState(false);
 
   const documents = useQuery(
     api.documents.getDocumentsByNamespace,
@@ -28,6 +30,7 @@ export default function SourcesPage({
   );
 
   const deleteDoc = useMutation(api.documents.deleteDocument);
+  const resetVectors = useMutation(api.vectors.resetNamespaceVectors);
   const deleteAllNamespaceDocuments = useMutation(
     api.documents.deleteAllNamespaceDocuments,
   );
@@ -56,12 +59,12 @@ export default function SourcesPage({
 
   const handleResetAll = async () => {
     if (!chatbot) return;
-    if (
-      !confirm(
-        `Reset all files for chatbot "${chatbot.name}"? This cannot be undone.`,
-      )
-    )
-      return;
+    setResetModalOpen(true);
+  };
+
+  const executeReset = async () => {
+    if (!chatbot) return;
+    setResetModalOpen(false);
 
     const toastId = toast.loading("Resetting knowledge base...");
     try {
@@ -172,6 +175,18 @@ export default function SourcesPage({
           </div>
         </div>
       </div>
+
+      <AlertModal
+        isOpen={resetModalOpen}
+        onClose={() => setResetModalOpen(false)}
+        onConfirm={executeReset}
+        isConfirm
+        type="danger"
+        title="Reset Knowledge Base?"
+        message={`Are you sure you want to reset all data for "${chatbot?.name}"? This will permanently delete all uploaded documents and clear the vector database. This action cannot be reversed.`}
+        confirmText="Reset Everything"
+        cancelText="Keep Data"
+      />
     </div>
   );
 }

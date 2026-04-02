@@ -18,7 +18,8 @@ import { Doc } from "@/convex/_generated/dataModel";
 import { useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { Logo } from "@/components/ui/Logo";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { AlertModal } from "@/components/ui/AlertModal";
 
 function ChatbotTotalChats({ chatId }: { chatId: string }) {
   const total = useQuery(api.analytics.getTotalChats, {
@@ -36,14 +37,20 @@ export default function ManageChatbotsPage() {
   const deleteChatbot = useMutation(api.documents.deleteChatbot);
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [chatbotToDelete, setChatbotToDelete] = useState<Doc<"chatbots"> | null>(null);
 
-  const handleDelete = async (chatbot: Doc<"chatbots">) => {
-    if (!chatbot) return;
-    const confirmed = confirm(`Are you sure you want to delete "${chatbot.name}"?`);
-    if (!confirmed) return;
-    setDeletingId(chatbot._id);
+  const handleDelete = (chatbot: Doc<"chatbots">) => {
+    setChatbotToDelete(chatbot);
+    setConfirmModalOpen(true);
+  };
+
+  const executeDelete = async () => {
+    if (!chatbotToDelete) return;
+    setDeletingId(chatbotToDelete._id);
+    setConfirmModalOpen(false);
     try {
-      await deleteChatbot({ id: chatbot._id });
+      await deleteChatbot({ id: chatbotToDelete._id });
       toast.success("Chatbot decommissioned");
     } catch (error) {
       toast.error("Failed to delete");
@@ -211,6 +218,18 @@ export default function ManageChatbotsPage() {
           )}
         </div>
       </div>
+
+      <AlertModal
+        isOpen={confirmModalOpen}
+        onClose={() => setConfirmModalOpen(false)}
+        onConfirm={executeDelete}
+        isConfirm
+        type="danger"
+        title="Delete Chatbot?"
+        message={`Are you sure you want to delete "${chatbotToDelete?.name}"? This action will permanently remove all data and documents associated with this chatbot.`}
+        confirmText="Delete Forever"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

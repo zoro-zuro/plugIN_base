@@ -16,7 +16,7 @@ import {
   FiPlus,
 } from "react-icons/fi";
 import { useRouter } from "next/navigation";
-
+import { AlertModal } from "@/components/ui/AlertModal";
 import { InputField, SelectField, SliderField } from "@/components/ui/Field";
 
 export default function SettingsPage({
@@ -95,7 +95,7 @@ export default function SettingsPage({
     try {
       await deleteChatbot({ id: chatbot._id });
       toast.success("Chatbot deleted successfully");
-      router.push("/chatbots/manage");
+      router.push("/chatbot/manage");
     } catch (error) {
       toast.error("Failed to delete chatbot");
       console.error(error);
@@ -418,47 +418,17 @@ export default function SettingsPage({
           </div>
 
           {/* DELETE MODAL (Overlay) */}
-          {showDeleteConfirm && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-              <div className="bg-background border border-border rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
-                <div className="p-6">
-                  <div className="flex items-center gap-3 text-destructive mb-4">
-                    <div className="p-2 bg-destructive/10 rounded-full">
-                      <FiAlertTriangle size={24} />
-                    </div>
-                    <h3 className="text-lg font-bold text-foreground">
-                      Delete Chatbot?
-                    </h3>
-                  </div>
-
-                  <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
-                    This action cannot be undone. This will permanently delete
-                    <span className="font-semibold text-foreground mx-1">
-                      {chatbot.name}
-                    </span>
-                    and remove all associated data and conversation history.
-                  </p>
-
-                  <div className="flex items-center gap-3 justify-end">
-                    <button
-                      onClick={() => setShowDeleteConfirm(false)}
-                      className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleDelete}
-                      disabled={isDeleting}
-                      className="px-4 py-2 text-sm font-semibold bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 flex items-center gap-2"
-                    >
-                      {isDeleting && <FiLoader className="animate-spin" />}
-                      Delete Forever
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+      <AlertModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        isConfirm={true}
+        type="danger"
+        title="Permanently Delete Chatbot?"
+        message={`This action cannot be undone. You are about to permanently delete "${chatbot.name}" and remove all associated data, including conversation history and vector sources.`}
+        confirmText={isDeleting ? "Deleting..." : "Delete Forever"}
+        cancelText="Keep Chatbot"
+      />
         </div>
       </div>
     </div>

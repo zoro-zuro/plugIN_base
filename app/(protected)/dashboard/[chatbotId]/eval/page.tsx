@@ -21,6 +21,7 @@ import {
   calculateOverallScore,
   calculateTestScore,
 } from "@/components/ui/Helpers";
+import { AlertModal } from "@/components/ui/AlertModal";
 import MetricCard from "@/components/ui/MetricCard";
 
 type TestCase = {
@@ -76,6 +77,18 @@ export default function EvalPage({
   const [dataset, setDataset] = useState<DatasetRow[]>([]);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
+  // Alert State
+  const [alertConfig, setAlertConfig] = useState<{isOpen: boolean, title: string, message: string, type: 'info' | 'danger' | 'success'}>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info"
+  });
+
+  const showAlert = (title: string, message: string, type: 'info' | 'danger' | 'success' = 'info') => {
+    setAlertConfig({ isOpen: true, title, message, type });
+  };
+
   const parseTestCases = (): TestCase[] => {
     return rawCases
       .split("\n")
@@ -93,15 +106,13 @@ export default function EvalPage({
 
   const handleRunEval = async () => {
     if (!chatbot) {
-      alert("Chatbot not loaded yet. Please wait.");
+      showAlert("Chatbot Loading", "The conversational engine is still initializing. Please wait a moment.", "info");
       return;
     }
 
     const tests = parseTestCases();
     if (tests.length === 0) {
-      alert(
-        "Please add at least one test case in format: Question | Ground truth answer",
-      );
+      showAlert("Configuration Missing", "Please add at least one test case specifically formatted as: Question | Ground truth answer.", "info");
       return;
     }
 
@@ -174,14 +185,14 @@ export default function EvalPage({
       const json = await res.json();
 
       if (!json.success) {
-        alert("Evaluation failed: " + (json.error || "Unknown error"));
+        showAlert("Evaluation Failed", json.error || "The benchmarking API encountered an issue.", "danger");
         setIsRunning(false);
         return;
       }
 
       setEvalResult(json.data);
     } catch (error) {
-      alert("Evaluation failed: " + (error as Error).message);
+      showAlert("Internal Error", (error as Error).message, "danger");
     } finally {
       setIsRunning(false);
     }
@@ -189,7 +200,7 @@ export default function EvalPage({
 
   const handleDownloadJSON = () => {
     if (!evalResult || dataset.length === 0) {
-      alert("No evaluation data to download. Run evaluation first.");
+      showAlert("No Data Available", "Please execute a test suite evaluation before attempting to export data.", "info");
       return;
     }
 
@@ -224,7 +235,7 @@ export default function EvalPage({
 
   const handleDownloadHTMLReport = () => {
     if (!evalResult || dataset.length === 0 || !chatbot) {
-      alert("No evaluation data to download. Run evaluation first.");
+      showAlert("Export Unavailable", "Generate test results to enable high-fidelity report exports.", "info");
       return;
     }
 
@@ -490,6 +501,16 @@ export default function EvalPage({
           )}
         </div>
       </div>
+      
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        isConfirm={false}
+        confirmText="Acknowledged"
+      />
     </div>
   );
 }
