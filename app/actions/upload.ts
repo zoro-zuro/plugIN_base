@@ -1,6 +1,7 @@
 "use server";
 
 import { currentUser } from "@clerk/nextjs/server";
+import { after } from "next/server";
 import { getPineconeVectorStore } from "@/lib/vectorStore";
 import { preprocessDocument } from "@/lib/preprocessing";
 import { api } from "@/convex/_generated/api";
@@ -94,16 +95,22 @@ export const uploadDocumentWithDescription = async (
     });
     console.timeEnd("Convex Upload");
 
-    // --- STEP 2: TRIGGER BACKGROUND PROCESSING (Fire & Forget) ---
-    // Do NOT await this. This makes the UI return instantly.
-    processVectorsInBackground(
-      fileBuffer,
-      fileName,
-      namespace,
-      documentId,
-      user.id,
-      description,
-    ).catch((err) => console.error("Background process error:", err));
+    // --- STEP 2: TRIGGER BACKGROUND PROCESSING (Fire & Forget correctly) ---
+    // Using after() ensures Vercel doesn't kill the function before it finishes.
+    after(async () => {
+      try {
+        await processVectorsInBackground(
+          fileBuffer,
+          fileName,
+          namespace,
+          documentId,
+          user.id,
+          description,
+        );
+      } catch (err) {
+        console.error("Background process error:", err);
+      }
+    });
 
     return {
       success: true,

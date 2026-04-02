@@ -2,6 +2,7 @@
 
 import * as cheerio from "cheerio";
 import { currentUser } from "@clerk/nextjs/server";
+import { after } from "next/server";
 import { fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { preprocessDocument } from "@/lib/preprocessing";
@@ -118,15 +119,21 @@ export const crawlAndTrainUrl = async (
       fileDescription: description,
     });
 
-    // Fire and forget background processing
-    processUrlInBackground(
-      url,
-      cleanText,
-      namespace,
-      documentId,
-      user.id,
-      description
-    ).catch(console.error);
+    // Fire and forget background processing (using after() to ensure longevity)
+    after(async () => {
+      try {
+        await processUrlInBackground(
+          url,
+          cleanText,
+          namespace,
+          documentId,
+          user.id,
+          description
+        );
+      } catch (err) {
+        console.error("Crawler background processing error:", err);
+      }
+    });
 
     return { success: true, message: "URL scraping started", documentId };
   } catch (error) {
